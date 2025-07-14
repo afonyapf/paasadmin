@@ -417,6 +417,236 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Template version routes
+  app.get('/api/templates/:id/versions', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      const versions = await storage.getTemplateVersions(templateId);
+      res.json(versions);
+    } catch (error) {
+      console.error('Get template versions error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/templates/:id/versions', requireAuth, logAudit('create', 'template_version'), async (req: Request, res: Response) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      const version = await storage.createTemplateVersion({
+        ...req.body,
+        templateId,
+        createdBy: req.session.adminId
+      });
+      res.status(201).json(version);
+    } catch (error) {
+      console.error('Create template version error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Section routes
+  app.get('/api/sections', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { search, limit, offset } = req.query;
+      const sections = await storage.getSections({
+        search: search as string,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+      res.json(sections);
+    } catch (error) {
+      console.error('Get sections error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/sections/:id', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const section = await storage.getSectionById(id);
+      
+      if (!section) {
+        return res.status(404).json({ message: "Section not found" });
+      }
+      
+      res.json(section);
+    } catch (error) {
+      console.error('Get section error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/sections', requireAuth, logAudit('create', 'section'), async (req: Request, res: Response) => {
+    try {
+      const section = await storage.createSection(req.body);
+      res.status(201).json(section);
+    } catch (error) {
+      console.error('Create section error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put('/api/sections/:id', requireAuth, logAudit('update', 'section'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const section = await storage.updateSection(id, req.body);
+      res.json(section);
+    } catch (error) {
+      console.error('Update section error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete('/api/sections/:id', requireAuth, logAudit('delete', 'section'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSection(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Delete section error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Global table schema routes
+  app.get('/api/table-schemas', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { type, search, limit, offset } = req.query;
+      const schemas = await storage.getGlobalTableSchemas({
+        type: type as string,
+        search: search as string,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+      res.json(schemas);
+    } catch (error) {
+      console.error('Get table schemas error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get('/api/table-schemas/:id', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const schema = await storage.getGlobalTableSchemaById(id);
+      
+      if (!schema) {
+        return res.status(404).json({ message: "Table schema not found" });
+      }
+      
+      const fields = await storage.getGlobalTableFields(id);
+      res.json({ ...schema, fields });
+    } catch (error) {
+      console.error('Get table schema error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/table-schemas', requireAuth, logAudit('create', 'table_schema'), async (req: Request, res: Response) => {
+    try {
+      const { fields, ...schemaData } = req.body;
+      const schema = await storage.createGlobalTableSchema(schemaData);
+      
+      // Create fields if provided
+      if (fields && fields.length > 0) {
+        for (const field of fields) {
+          await storage.createGlobalTableField({ ...field, schemaId: schema.id });
+        }
+      }
+      
+      res.status(201).json(schema);
+    } catch (error) {
+      console.error('Create table schema error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put('/api/table-schemas/:id', requireAuth, logAudit('update', 'table_schema'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { fields, ...schemaData } = req.body;
+      
+      const schema = await storage.updateGlobalTableSchema(id, schemaData);
+      
+      // Update fields if provided
+      if (fields) {
+        // For simplicity, delete and recreate fields
+        const existingFields = await storage.getGlobalTableFields(id);
+        for (const field of existingFields) {
+          await storage.deleteGlobalTableField(field.id);
+        }
+        
+        for (const field of fields) {
+          await storage.createGlobalTableField({ ...field, schemaId: id });
+        }
+      }
+      
+      res.json(schema);
+    } catch (error) {
+      console.error('Update table schema error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete('/api/table-schemas/:id', requireAuth, logAudit('delete', 'table_schema'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteGlobalTableSchema(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Delete table schema error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Global table field routes
+  app.get('/api/table-schemas/:id/fields', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const schemaId = parseInt(req.params.id);
+      const fields = await storage.getGlobalTableFields(schemaId);
+      res.json(fields);
+    } catch (error) {
+      console.error('Get table fields error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post('/api/table-schemas/:id/fields', requireAuth, logAudit('create', 'table_field'), async (req: Request, res: Response) => {
+    try {
+      const schemaId = parseInt(req.params.id);
+      const field = await storage.createGlobalTableField({
+        ...req.body,
+        schemaId
+      });
+      res.status(201).json(field);
+    } catch (error) {
+      console.error('Create table field error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put('/api/table-fields/:id', requireAuth, logAudit('update', 'table_field'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const field = await storage.updateGlobalTableField(id, req.body);
+      res.json(field);
+    } catch (error) {
+      console.error('Update table field error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete('/api/table-fields/:id', requireAuth, logAudit('delete', 'table_field'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteGlobalTableField(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Delete table field error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Custom domain routes
   app.get('/api/domains', requireAuth, async (req: Request, res: Response) => {
     try {

@@ -55,16 +55,82 @@ export const tariffs = pgTable("tariffs", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Templates table
+// Templates table - updated according to spec
 export const templates = pgTable("templates", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  category: text("category").notNull(),
+  type: text("type").notNull(), // client, supplier
+  version: text("version").notNull().default("1.0"),
+  isActive: boolean("is_active").notNull().default(true),
+  isDefault: boolean("is_default").notNull().default(false),
   config: jsonb("config").notNull(),
-  isPublic: boolean("is_public").notNull().default(true),
+  tariffId: integer("tariff_id").references(() => tariffs.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Template versions table
+export const templateVersions = pgTable("template_versions", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").references(() => templates.id).notNull(),
+  version: text("version").notNull(),
+  config: jsonb("config").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: integer("created_by").references(() => admins.id).notNull(),
+});
+
+// Sections table (platform sections/features)
+export const sections = pgTable("sections", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  parentId: integer("parent_id").references(() => sections.id),
+  tableName: text("table_name"),
+  isSystem: boolean("is_system").notNull().default(false),
+  accessType: text("access_type").notNull().default("open"), // open, restricted
+  description: text("description"),
+  status: boolean("status").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Global table schemas
+export const globalTableSchemas = pgTable("global_table_schemas", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  type: text("type").notNull(), // directory, document, register, journal, report, procedure
+  isSystem: boolean("is_system").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Global table fields
+export const globalTableFields = pgTable("global_table_fields", {
+  id: serial("id").primaryKey(),
+  schemaId: integer("schema_id").references(() => globalTableSchemas.id).notNull(),
+  name: text("name").notNull(),
+  label: text("label").notNull(),
+  type: text("type").notNull(), // string, number, boolean, date, reference, select
+  isRequired: boolean("is_required").notNull().default(false),
+  isSystem: boolean("is_system").notNull().default(false),
+  referenceTable: text("reference_table"), // for reference type
+  options: jsonb("options"), // for select type
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Template sections relationship
+export const templateSections = pgTable("template_sections", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").references(() => templates.id).notNull(),
+  sectionId: integer("section_id").references(() => sections.id).notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+});
+
+// Template table schemas relationship
+export const templateTableSchemas = pgTable("template_table_schemas", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").references(() => templates.id).notNull(),
+  schemaId: integer("schema_id").references(() => globalTableSchemas.id).notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
 });
 
 // Custom domains table
@@ -131,6 +197,34 @@ export const insertTemplateSchema = createInsertSchema(templates).omit({
   updatedAt: true,
 });
 
+export const insertTemplateVersionSchema = createInsertSchema(templateVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSectionSchema = createInsertSchema(sections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertGlobalTableSchemaSchema = createInsertSchema(globalTableSchemas).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertGlobalTableFieldSchema = createInsertSchema(globalTableFields).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTemplateSectionSchema = createInsertSchema(templateSections).omit({
+  id: true,
+});
+
+export const insertTemplateTableSchemaSchema = createInsertSchema(templateTableSchemas).omit({
+  id: true,
+});
+
 export const insertCustomDomainSchema = createInsertSchema(customDomains).omit({
   id: true,
   createdAt: true,
@@ -164,6 +258,18 @@ export type Tariff = typeof tariffs.$inferSelect;
 export type InsertTariff = z.infer<typeof insertTariffSchema>;
 export type Template = typeof templates.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
+export type TemplateVersion = typeof templateVersions.$inferSelect;
+export type InsertTemplateVersion = z.infer<typeof insertTemplateVersionSchema>;
+export type Section = typeof sections.$inferSelect;
+export type InsertSection = z.infer<typeof insertSectionSchema>;
+export type GlobalTableSchema = typeof globalTableSchemas.$inferSelect;
+export type InsertGlobalTableSchema = z.infer<typeof insertGlobalTableSchemaSchema>;
+export type GlobalTableField = typeof globalTableFields.$inferSelect;
+export type InsertGlobalTableField = z.infer<typeof insertGlobalTableFieldSchema>;
+export type TemplateSection = typeof templateSections.$inferSelect;
+export type InsertTemplateSection = z.infer<typeof insertTemplateSectionSchema>;
+export type TemplateTableSchema = typeof templateTableSchemas.$inferSelect;
+export type InsertTemplateTableSchema = z.infer<typeof insertTemplateTableSchemaSchema>;
 export type CustomDomain = typeof customDomains.$inferSelect;
 export type InsertCustomDomain = z.infer<typeof insertCustomDomainSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;

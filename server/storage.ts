@@ -7,6 +7,12 @@ import {
   workspaces,
   tariffs,
   templates,
+  templateVersions,
+  sections,
+  globalTableSchemas,
+  globalTableFields,
+  templateSections,
+  templateTableSchemas,
   customDomains,
   auditLogs,
   systemMetrics,
@@ -15,6 +21,12 @@ import {
   type Workspace,
   type Tariff,
   type Template,
+  type TemplateVersion,
+  type Section,
+  type GlobalTableSchema,
+  type GlobalTableField,
+  type TemplateSection,
+  type TemplateTableSchema,
   type CustomDomain,
   type AuditLog,
   type SystemMetric,
@@ -23,6 +35,12 @@ import {
   type InsertWorkspace,
   type InsertTariff,
   type InsertTemplate,
+  type InsertTemplateVersion,
+  type InsertSection,
+  type InsertGlobalTableSchema,
+  type InsertGlobalTableField,
+  type InsertTemplateSection,
+  type InsertTemplateTableSchema,
   type InsertCustomDomain,
   type InsertAuditLog,
   type InsertSystemMetric,
@@ -65,6 +83,38 @@ export interface IStorage {
   createTemplate(template: InsertTemplate): Promise<Template>;
   updateTemplate(id: number, template: Partial<InsertTemplate>): Promise<Template>;
   deleteTemplate(id: number): Promise<void>;
+  
+  // Template version methods
+  getTemplateVersions(templateId: number): Promise<TemplateVersion[]>;
+  createTemplateVersion(version: InsertTemplateVersion): Promise<TemplateVersion>;
+  
+  // Section methods
+  getSections(options?: { search?: string; limit?: number; offset?: number }): Promise<{ sections: Section[]; total: number }>;
+  getSectionById(id: number): Promise<Section | undefined>;
+  createSection(section: InsertSection): Promise<Section>;
+  updateSection(id: number, section: Partial<InsertSection>): Promise<Section>;
+  deleteSection(id: number): Promise<void>;
+  
+  // Global table schema methods
+  getGlobalTableSchemas(options?: { type?: string; search?: string; limit?: number; offset?: number }): Promise<{ schemas: GlobalTableSchema[]; total: number }>;
+  getGlobalTableSchemaById(id: number): Promise<GlobalTableSchema | undefined>;
+  createGlobalTableSchema(schema: InsertGlobalTableSchema): Promise<GlobalTableSchema>;
+  updateGlobalTableSchema(id: number, schema: Partial<InsertGlobalTableSchema>): Promise<GlobalTableSchema>;
+  deleteGlobalTableSchema(id: number): Promise<void>;
+  
+  // Global table field methods
+  getGlobalTableFields(schemaId: number): Promise<GlobalTableField[]>;
+  createGlobalTableField(field: InsertGlobalTableField): Promise<GlobalTableField>;
+  updateGlobalTableField(id: number, field: Partial<InsertGlobalTableField>): Promise<GlobalTableField>;
+  deleteGlobalTableField(id: number): Promise<void>;
+  
+  // Template section methods
+  getTemplateSections(templateId: number): Promise<TemplateSection[]>;
+  updateTemplateSections(templateId: number, sections: InsertTemplateSection[]): Promise<void>;
+  
+  // Template table schema methods
+  getTemplateTableSchemas(templateId: number): Promise<TemplateTableSchema[]>;
+  updateTemplateTableSchemas(templateId: number, schemas: InsertTemplateTableSchema[]): Promise<void>;
 
   // Custom domain methods
   getCustomDomains(options?: { search?: string; limit?: number; offset?: number }): Promise<{ domains: CustomDomain[]; total: number }>;
@@ -258,6 +308,153 @@ export class DrizzleStorage implements IStorage {
 
   async deleteTemplate(id: number): Promise<void> {
     await db.delete(templates).where(eq(templates.id, id));
+  }
+
+  // Template version methods
+  async getTemplateVersions(templateId: number): Promise<TemplateVersion[]> {
+    return await db.select().from(templateVersions).where(eq(templateVersions.templateId, templateId)).orderBy(desc(templateVersions.createdAt));
+  }
+
+  async createTemplateVersion(version: InsertTemplateVersion): Promise<TemplateVersion> {
+    const result = await db.insert(templateVersions).values(version).returning();
+    return result[0];
+  }
+
+  // Section methods
+  async getSections(options: { search?: string; limit?: number; offset?: number } = {}): Promise<{ sections: Section[]; total: number }> {
+    const { search, limit = 10, offset = 0 } = options;
+    
+    let whereClause = undefined;
+    if (search) {
+      whereClause = like(sections.name, `%${search}%`);
+    }
+
+    const [sectionResults, totalResults] = await Promise.all([
+      db.select().from(sections).where(whereClause).limit(limit).offset(offset).orderBy(sections.name),
+      db.select({ count: count() }).from(sections).where(whereClause),
+    ]);
+
+    return {
+      sections: sectionResults,
+      total: totalResults[0]?.count || 0,
+    };
+  }
+
+  async getSectionById(id: number): Promise<Section | undefined> {
+    const result = await db.select().from(sections).where(eq(sections.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createSection(section: InsertSection): Promise<Section> {
+    const result = await db.insert(sections).values(section).returning();
+    return result[0];
+  }
+
+  async updateSection(id: number, section: Partial<InsertSection>): Promise<Section> {
+    const result = await db.update(sections).set(section).where(eq(sections.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteSection(id: number): Promise<void> {
+    await db.delete(sections).where(eq(sections.id, id));
+  }
+
+  // Global table schema methods
+  async getGlobalTableSchemas(options: { type?: string; search?: string; limit?: number; offset?: number } = {}): Promise<{ schemas: GlobalTableSchema[]; total: number }> {
+    const { type, search, limit = 10, offset = 0 } = options;
+    
+    let whereClause = undefined;
+    if (type || search) {
+      const conditions = [];
+      if (type) {
+        conditions.push(eq(globalTableSchemas.type, type));
+      }
+      if (search) {
+        conditions.push(or(
+          like(globalTableSchemas.name, `%${search}%`),
+          like(globalTableSchemas.code, `%${search}%`)
+        ));
+      }
+      whereClause = and(...conditions);
+    }
+
+    const [schemaResults, totalResults] = await Promise.all([
+      db.select().from(globalTableSchemas).where(whereClause).limit(limit).offset(offset).orderBy(globalTableSchemas.name),
+      db.select({ count: count() }).from(globalTableSchemas).where(whereClause),
+    ]);
+
+    return {
+      schemas: schemaResults,
+      total: totalResults[0]?.count || 0,
+    };
+  }
+
+  async getGlobalTableSchemaById(id: number): Promise<GlobalTableSchema | undefined> {
+    const result = await db.select().from(globalTableSchemas).where(eq(globalTableSchemas.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createGlobalTableSchema(schema: InsertGlobalTableSchema): Promise<GlobalTableSchema> {
+    const result = await db.insert(globalTableSchemas).values(schema).returning();
+    return result[0];
+  }
+
+  async updateGlobalTableSchema(id: number, schema: Partial<InsertGlobalTableSchema>): Promise<GlobalTableSchema> {
+    const result = await db.update(globalTableSchemas).set(schema).where(eq(globalTableSchemas.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteGlobalTableSchema(id: number): Promise<void> {
+    await db.delete(globalTableSchemas).where(eq(globalTableSchemas.id, id));
+  }
+
+  // Global table field methods
+  async getGlobalTableFields(schemaId: number): Promise<GlobalTableField[]> {
+    return await db.select().from(globalTableFields).where(eq(globalTableFields.schemaId, schemaId)).orderBy(globalTableFields.name);
+  }
+
+  async createGlobalTableField(field: InsertGlobalTableField): Promise<GlobalTableField> {
+    const result = await db.insert(globalTableFields).values(field).returning();
+    return result[0];
+  }
+
+  async updateGlobalTableField(id: number, field: Partial<InsertGlobalTableField>): Promise<GlobalTableField> {
+    const result = await db.update(globalTableFields).set(field).where(eq(globalTableFields.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteGlobalTableField(id: number): Promise<void> {
+    await db.delete(globalTableFields).where(eq(globalTableFields.id, id));
+  }
+
+  // Template section methods
+  async getTemplateSections(templateId: number): Promise<TemplateSection[]> {
+    return await db.select().from(templateSections).where(eq(templateSections.templateId, templateId));
+  }
+
+  async updateTemplateSections(templateId: number, sectionData: InsertTemplateSection[]): Promise<void> {
+    // Delete existing sections
+    await db.delete(templateSections).where(eq(templateSections.templateId, templateId));
+    
+    // Insert new sections
+    if (sectionData.length > 0) {
+      await db.insert(templateSections).values(sectionData);
+    }
+  }
+
+  // Template table schema methods
+  async getTemplateTableSchemas(templateId: number): Promise<TemplateTableSchema[]> {
+    return await db.select().from(templateTableSchemas).where(eq(templateTableSchemas.templateId, templateId));
+  }
+
+  async updateTemplateTableSchemas(templateId: number, schemaData: InsertTemplateTableSchema[]): Promise<void> {
+    // Delete existing schemas
+    await db.delete(templateTableSchemas).where(eq(templateTableSchemas.templateId, templateId));
+    
+    // Insert new schemas
+    if (schemaData.length > 0) {
+      await db.insert(templateTableSchemas).values(schemaData);
+    }
   }
 
   // Custom domain methods
