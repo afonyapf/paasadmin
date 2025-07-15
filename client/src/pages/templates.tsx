@@ -1227,7 +1227,9 @@ function TableTreeSelect({ value, onValueChange }: {
   const selectedSchema = schemas.find(schema => schema.code === value);
   const selectedType = schemaTypes.find(type => type.value === selectedSchema?.type);
 
-  const toggleTypeExpansion = (typeValue: string) => {
+  const toggleTypeExpansion = (e: React.MouseEvent, typeValue: string) => {
+    e.preventDefault();
+    e.stopPropagation();
     const newExpanded = new Set(expandedTypes);
     if (newExpanded.has(typeValue)) {
       newExpanded.delete(typeValue);
@@ -1237,6 +1239,13 @@ function TableTreeSelect({ value, onValueChange }: {
     setExpandedTypes(newExpanded);
   };
 
+  const handleSelectValue = (e: React.MouseEvent, selectedValue: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onValueChange(selectedValue);
+    setIsOpen(false);
+  };
+
   const displayValue = selectedSchema 
     ? `${selectedType?.icon} ${selectedSchema.name} (${selectedSchema.code})`
     : "Выберите таблицу";
@@ -1244,11 +1253,15 @@ function TableTreeSelect({ value, onValueChange }: {
   return (
     <div className="relative">
       <Button
+        type="button"
         variant="outline"
         role="combobox"
         aria-expanded={isOpen}
         className="w-full justify-between"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.preventDefault();
+          setIsOpen(!isOpen);
+        }}
       >
         {displayValue}
         <span className="ml-2 h-4 w-4 shrink-0 opacity-50">▼</span>
@@ -1259,10 +1272,7 @@ function TableTreeSelect({ value, onValueChange }: {
           <div className="p-1">
             <div 
               className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded"
-              onClick={() => {
-                onValueChange("");
-                setIsOpen(false);
-              }}
+              onClick={(e) => handleSelectValue(e, "")}
             >
               <span className="text-gray-500">Не выбрано</span>
             </div>
@@ -1277,7 +1287,7 @@ function TableTreeSelect({ value, onValueChange }: {
                 <div key={type.value}>
                   <div 
                     className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded flex items-center justify-between"
-                    onClick={() => toggleTypeExpansion(type.value)}
+                    onClick={(e) => toggleTypeExpansion(e, type.value)}
                   >
                     <div className="flex items-center space-x-2">
                       <span>{type.icon}</span>
@@ -1295,10 +1305,7 @@ function TableTreeSelect({ value, onValueChange }: {
                         <div
                           key={schema.id}
                           className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded flex items-center space-x-2"
-                          onClick={() => {
-                            onValueChange(schema.code);
-                            setIsOpen(false);
-                          }}
+                          onClick={(e) => handleSelectValue(e, schema.code)}
                         >
                           <span className="text-sm">{schema.name}</span>
                           <span className="text-xs text-gray-500">({schema.code})</span>
