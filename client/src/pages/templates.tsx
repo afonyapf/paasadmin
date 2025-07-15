@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Edit, Trash2, Eye, Settings, FileText, Database, History } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Settings, FileText, Database, History, Play } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import type { Template, Section, GlobalTableSchema } from "@shared/schema";
@@ -140,10 +141,10 @@ export default function TemplatesPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Templates</h1>
+        <h1 className="text-3xl font-bold">Шаблоны</h1>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Create Template
+          Создать шаблон
         </Button>
       </div>
 
@@ -151,15 +152,15 @@ export default function TemplatesPage() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="templates">
             <FileText className="w-4 h-4 mr-2" />
-            Template List
+            Список шаблонов
           </TabsTrigger>
           <TabsTrigger value="sections">
             <Settings className="w-4 h-4 mr-2" />
-            Platform Sections
+            Разделы платформы
           </TabsTrigger>
           <TabsTrigger value="table-schemas">
             <Database className="w-4 h-4 mr-2" />
-            Table Schemas
+            Структура таблиц
           </TabsTrigger>
         </TabsList>
 
@@ -194,9 +195,9 @@ export default function TemplatesPage() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create New Template</DialogTitle>
+            <DialogTitle>Создать новый шаблон</DialogTitle>
             <DialogDescription>
-              Create a new workspace template
+              Создание нового шаблона workspace
             </DialogDescription>
           </DialogHeader>
           <TemplateForm onSubmit={handleCreateTemplate} />
@@ -221,15 +222,21 @@ export default function TemplatesPage() {
 
       {/* View Template Dialog */}
       <Dialog open={!!selectedTemplate} onOpenChange={() => setSelectedTemplate(null)}>
-        <DialogContent className="sm:max-w-[800px]">
+        <DialogContent className="sm:max-w-[1200px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedTemplate?.name}</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{selectedTemplate?.name}</span>
+              <Button variant="outline" size="sm">
+                <Play className="w-4 h-4 mr-2" />
+                Применить к workspace
+              </Button>
+            </DialogTitle>
             <DialogDescription>
-              Template Details and Configuration
+              Редактор шаблона и его конфигурация
             </DialogDescription>
           </DialogHeader>
           {selectedTemplate && (
-            <TemplateDetails template={selectedTemplate} />
+            <TemplateEditor template={selectedTemplate} />
           )}
         </DialogContent>
       </Dialog>
@@ -280,12 +287,12 @@ function TemplateListTab({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Active</TableHead>
-                  <TableHead>Default</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Название шаблона</TableHead>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Версия</TableHead>
+                  <TableHead>Активен</TableHead>
+                  <TableHead>Применён по умолчанию</TableHead>
+                  <TableHead>Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -437,10 +444,10 @@ function SectionsTab({ sections, isLoading }: { sections: Section[]; isLoading: 
   return (
     <>
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Platform Sections</h2>
+        <h2 className="text-xl font-semibold">Разделы платформы</h2>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Create Section
+          Создать раздел
         </Button>
       </div>
 
@@ -458,13 +465,13 @@ function SectionsTab({ sections, isLoading }: { sections: Section[]; isLoading: 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Parent</TableHead>
-                  <TableHead>Access Type</TableHead>
-                  <TableHead>Table</TableHead>
-                  <TableHead>System</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Название</TableHead>
+                  <TableHead>Родительский раздел</TableHead>
+                  <TableHead>Тип доступа</TableHead>
+                  <TableHead>Привязанная таблица</TableHead>
+                  <TableHead>Системный</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -518,9 +525,9 @@ function SectionsTab({ sections, isLoading }: { sections: Section[]; isLoading: 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create New Section</DialogTitle>
+            <DialogTitle>Создать новый раздел</DialogTitle>
             <DialogDescription>
-              Create a new platform section
+              Создание нового раздела платформы
             </DialogDescription>
           </DialogHeader>
           <SectionForm onSubmit={handleCreateSection} sections={sections} />
@@ -641,12 +648,12 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
   };
 
   const schemaTypes = [
-    { value: "directory", label: "📗 Directory", icon: "📗" },
-    { value: "document", label: "📘 Document", icon: "📘" },
-    { value: "register", label: "📙 Register", icon: "📙" },
-    { value: "journal", label: "📒 Journal", icon: "📒" },
-    { value: "report", label: "📓 Report", icon: "📓" },
-    { value: "procedure", label: "📕 Procedure", icon: "📕" },
+    { value: "directory", label: "📗 Справочники", icon: "📗" },
+    { value: "document", label: "📘 Документы", icon: "📘" },
+    { value: "register", label: "📙 Регистры", icon: "📙" },
+    { value: "journal", label: "📒 Журналы", icon: "📒" },
+    { value: "report", label: "📓 Отчёты", icon: "📓" },
+    { value: "procedure", label: "📕 Обработки", icon: "📕" },
   ];
 
   const filteredSchemas = selectedType ? schemas.filter(schema => schema.type === selectedType) : schemas;
@@ -654,10 +661,10 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
   return (
     <>
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Table Schemas</h2>
+        <h2 className="text-xl font-semibold">Структура таблиц</h2>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Create Schema
+          Создать схему
         </Button>
       </div>
 
@@ -681,62 +688,74 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
 
       <Card>
         <CardHeader>
-          <CardTitle>Table Schemas</CardTitle>
+          <CardTitle>Структура таблиц</CardTitle>
           <CardDescription>
-            Centralized management of table schemas used in templates
+            Централизованное управление схемами таблиц, используемых в шаблонах
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading schemas...</div>
+            <div className="text-center py-8">Загрузка схем...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>System</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSchemas?.map((schema) => (
-                  <TableRow key={schema.id}>
-                    <TableCell className="font-medium">{schema.name}</TableCell>
-                    <TableCell className="font-mono text-sm">{schema.code}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {schemaTypes.find(t => t.value === schema.type)?.icon} {schema.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={schema.isSystem ? "default" : "secondary"}>
-                        {schema.isSystem ? "Yes" : "No"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
+            <Accordion type="single" collapsible className="w-full">
+              {schemaTypes.map(type => {
+                const typeSchemas = schemas.filter(schema => schema.type === type.value);
+                return (
+                  <AccordionItem key={type.value} value={type.value}>
+                    <AccordionTrigger>
                       <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingSchema(schema)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteSchema(schema.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <span>{type.icon}</span>
+                        <span>{type.label}</span>
+                        <Badge variant="secondary">{typeSchemas.length}</Badge>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Название</TableHead>
+                            <TableHead>Код</TableHead>
+                            <TableHead>Системная</TableHead>
+                            <TableHead>Действия</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {typeSchemas.map((schema) => (
+                            <TableRow key={schema.id}>
+                              <TableCell className="font-medium">{schema.name}</TableCell>
+                              <TableCell className="font-mono text-sm">{schema.code}</TableCell>
+                              <TableCell>
+                                <Badge variant={schema.isSystem ? "default" : "secondary"}>
+                                  {schema.isSystem ? "Да" : "Нет"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center space-x-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingSchema(schema)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteSchema(schema.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           )}
         </CardContent>
       </Card>
@@ -745,9 +764,9 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create New Schema</DialogTitle>
+            <DialogTitle>Создать новую схему</DialogTitle>
             <DialogDescription>
-              Create a new table schema
+              Создание новой схемы таблицы
             </DialogDescription>
           </DialogHeader>
           <TableSchemaForm onSubmit={handleCreateSchema} schemaTypes={schemaTypes} />
@@ -774,7 +793,7 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
   );
 }
 
-function TemplateDetails({ template }: { template: Template }) {
+function TemplateEditor({ template }: { template: Template }) {
   const { data: versions } = useQuery({
     queryKey: ["/api/templates", template.id, "versions"],
     queryFn: async () => {
@@ -784,61 +803,127 @@ function TemplateDetails({ template }: { template: Template }) {
     },
   });
 
+  const { data: sectionsData } = useQuery<{ sections: Section[]; total: number }>({
+    queryKey: ["/api/sections"],
+  });
+
+  const { data: tableSchemasData } = useQuery<{ schemas: GlobalTableSchema[]; total: number }>({
+    queryKey: ["/api/table-schemas"],
+  });
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm font-medium">Description</Label>
-          <p className="text-sm text-muted-foreground">{template.description}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Type</Label>
-          <p className="text-sm text-muted-foreground">{template.type}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Version</Label>
-          <p className="text-sm text-muted-foreground">{template.version}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Status</Label>
-          <div className="flex space-x-2">
-            <Badge variant={template.isActive ? "default" : "secondary"}>
-              {template.isActive ? "Active" : "Inactive"}
-            </Badge>
-            <Badge variant={template.isDefault ? "default" : "secondary"}>
-              {template.isDefault ? "Default" : "Not Default"}
-            </Badge>
-          </div>
-        </div>
-      </div>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Общая информация</TabsTrigger>
+          <TabsTrigger value="tables">Структура таблиц</TabsTrigger>
+          <TabsTrigger value="sections">Разделы</TabsTrigger>
+          <TabsTrigger value="features">Фичи и роли</TabsTrigger>
+          <TabsTrigger value="versions">История версий</TabsTrigger>
+        </TabsList>
 
-      <div>
-        <Label className="text-sm font-medium">Configuration</Label>
-        <pre className="text-sm bg-muted p-4 rounded-md overflow-auto max-h-40">
-          {JSON.stringify(template.config, null, 2)}
-        </pre>
-      </div>
-
-      {versions && versions.length > 0 && (
-        <div>
-          <Label className="text-sm font-medium flex items-center">
-            <History className="w-4 h-4 mr-2" />
-            Version History
-          </Label>
-          <div className="mt-2 space-y-2">
-            {versions.map((version: any) => (
-              <div key={version.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                <div>
-                  <span className="font-medium">{version.version}</span>
-                  <span className="text-sm text-muted-foreground ml-2">
-                    {new Date(version.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium">Описание</Label>
+              <p className="text-sm text-muted-foreground">{template.description}</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Тип</Label>
+              <p className="text-sm text-muted-foreground">{template.type}</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Версия</Label>
+              <p className="text-sm text-muted-foreground">{template.version}</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Статус</Label>
+              <div className="flex space-x-2">
+                <Badge variant={template.isActive ? "default" : "secondary"}>
+                  {template.isActive ? "Активен" : "Неактивен"}
+                </Badge>
+                <Badge variant={template.isDefault ? "default" : "secondary"}>
+                  {template.isDefault ? "По умолчанию" : "Не по умолчанию"}
+                </Badge>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      )}
+        </TabsContent>
+
+        <TabsContent value="tables" className="space-y-4">
+          <div>
+            <Label className="text-sm font-medium">Структура таблиц (на основе глобальных схем)</Label>
+            <div className="mt-2 space-y-2">
+              {tableSchemasData?.schemas.map((schema) => (
+                <div key={schema.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                  <div>
+                    <span className="font-medium">{schema.name}</span>
+                    <span className="text-sm text-muted-foreground ml-2">({schema.code})</span>
+                  </div>
+                  <Badge variant="secondary">{schema.type}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sections" className="space-y-4">
+          <div>
+            <Label className="text-sm font-medium">Разделы</Label>
+            <div className="mt-2 space-y-2">
+              {sectionsData?.sections.map((section) => (
+                <div key={section.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                  <div>
+                    <span className="font-medium">{section.name}</span>
+                    {section.description && (
+                      <p className="text-sm text-muted-foreground">{section.description}</p>
+                    )}
+                  </div>
+                  <Badge variant={section.accessType === "open" ? "default" : "secondary"}>
+                    {section.accessType}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="features" className="space-y-4">
+          <div>
+            <Label className="text-sm font-medium">Список фич и ролей</Label>
+            <div className="text-sm text-muted-foreground mt-2">
+              Здесь будет отображаться список фич и ролей, связанных с шаблоном
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="versions" className="space-y-4">
+          {versions && versions.length > 0 ? (
+            <div>
+              <Label className="text-sm font-medium flex items-center">
+                <History className="w-4 h-4 mr-2" />
+                История версий
+              </Label>
+              <div className="mt-2 space-y-2">
+                {versions.map((version: any) => (
+                  <div key={version.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                    <div>
+                      <span className="font-medium">{version.version}</span>
+                      <span className="text-sm text-muted-foreground ml-2">
+                        {new Date(version.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              История версий пуста
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -865,7 +950,7 @@ function TemplateForm({ initialData, onSubmit }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="name">Name</Label>
+        <Label htmlFor="name">Название</Label>
         <Input
           id="name"
           value={formData.name}
@@ -875,7 +960,7 @@ function TemplateForm({ initialData, onSubmit }: {
       </div>
       
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">Описание</Label>
         <Textarea
           id="description"
           value={formData.description}
@@ -884,23 +969,23 @@ function TemplateForm({ initialData, onSubmit }: {
       </div>
       
       <div>
-        <Label htmlFor="type">Type</Label>
+        <Label htmlFor="type">Тип</Label>
         <Select
           value={formData.type}
           onValueChange={(value) => setFormData({ ...formData, type: value })}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select type" />
+            <SelectValue placeholder="Выберите тип" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="client">Client</SelectItem>
-            <SelectItem value="supplier">Supplier</SelectItem>
+            <SelectItem value="client">Клиент</SelectItem>
+            <SelectItem value="supplier">Поставщик</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div>
-        <Label htmlFor="version">Version</Label>
+        <Label htmlFor="version">Версия</Label>
         <Input
           id="version"
           value={formData.version}
@@ -914,7 +999,7 @@ function TemplateForm({ initialData, onSubmit }: {
           checked={formData.isActive}
           onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
         />
-        <Label htmlFor="isActive">Active</Label>
+        <Label htmlFor="isActive">Активен</Label>
       </div>
 
       <div className="flex items-center space-x-2">
@@ -923,11 +1008,11 @@ function TemplateForm({ initialData, onSubmit }: {
           checked={formData.isDefault}
           onCheckedChange={(checked) => setFormData({ ...formData, isDefault: checked })}
         />
-        <Label htmlFor="isDefault">Default Template</Label>
+        <Label htmlFor="isDefault">Применить по умолчанию</Label>
       </div>
 
       <Button type="submit" className="w-full">
-        {initialData ? "Update Template" : "Create Template"}
+        {initialData ? "Обновить шаблон" : "Создать шаблон"}
       </Button>
     </form>
   );
@@ -956,7 +1041,7 @@ function SectionForm({ initialData, onSubmit, sections }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="name">Name</Label>
+        <Label htmlFor="name">Название</Label>
         <Input
           id="name"
           value={formData.name}
@@ -966,16 +1051,16 @@ function SectionForm({ initialData, onSubmit, sections }: {
       </div>
       
       <div>
-        <Label htmlFor="parentId">Parent Section</Label>
+        <Label htmlFor="parentId">Родительский раздел</Label>
         <Select
           value={formData.parentId?.toString() || "none"}
           onValueChange={(value) => setFormData({ ...formData, parentId: value === "none" ? null : parseInt(value) })}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select parent section" />
+            <SelectValue placeholder="Выберите родительский раздел" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="none">Нет</SelectItem>
             {sections.map(section => (
               <SelectItem key={section.id} value={section.id.toString()}>
                 {section.name}
@@ -986,7 +1071,7 @@ function SectionForm({ initialData, onSubmit, sections }: {
       </div>
 
       <div>
-        <Label htmlFor="tableName">Table Name</Label>
+        <Label htmlFor="tableName">Привязанная таблица</Label>
         <Input
           id="tableName"
           value={formData.tableName}
@@ -995,7 +1080,7 @@ function SectionForm({ initialData, onSubmit, sections }: {
       </div>
 
       <div>
-        <Label htmlFor="accessType">Access Type</Label>
+        <Label htmlFor="accessType">Тип доступа</Label>
         <Select
           value={formData.accessType}
           onValueChange={(value) => setFormData({ ...formData, accessType: value })}
@@ -1004,14 +1089,14 @@ function SectionForm({ initialData, onSubmit, sections }: {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="restricted">Restricted</SelectItem>
+            <SelectItem value="open">Открытый</SelectItem>
+            <SelectItem value="restricted">Закрытый</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">Описание</Label>
         <Textarea
           id="description"
           value={formData.description}
@@ -1025,7 +1110,7 @@ function SectionForm({ initialData, onSubmit, sections }: {
           checked={formData.isSystem}
           onCheckedChange={(checked) => setFormData({ ...formData, isSystem: checked })}
         />
-        <Label htmlFor="isSystem">System Section</Label>
+        <Label htmlFor="isSystem">Системный раздел</Label>
       </div>
 
       <div className="flex items-center space-x-2">
@@ -1034,11 +1119,11 @@ function SectionForm({ initialData, onSubmit, sections }: {
           checked={formData.status}
           onCheckedChange={(checked) => setFormData({ ...formData, status: checked })}
         />
-        <Label htmlFor="status">Active</Label>
+        <Label htmlFor="status">Активен</Label>
       </div>
 
       <Button type="submit" className="w-full">
-        {initialData ? "Update Section" : "Create Section"}
+        {initialData ? "Обновить раздел" : "Создать раздел"}
       </Button>
     </form>
   );
@@ -1064,7 +1149,7 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="name">Name</Label>
+        <Label htmlFor="name">Название</Label>
         <Input
           id="name"
           value={formData.name}
@@ -1074,7 +1159,7 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
       </div>
       
       <div>
-        <Label htmlFor="code">Code</Label>
+        <Label htmlFor="code">Код</Label>
         <Input
           id="code"
           value={formData.code}
@@ -1084,7 +1169,7 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
       </div>
 
       <div>
-        <Label htmlFor="type">Type</Label>
+        <Label htmlFor="type">Тип</Label>
         <Select
           value={formData.type}
           onValueChange={(value) => setFormData({ ...formData, type: value })}
@@ -1108,11 +1193,11 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
           checked={formData.isSystem}
           onCheckedChange={(checked) => setFormData({ ...formData, isSystem: checked })}
         />
-        <Label htmlFor="isSystem">System Schema</Label>
+        <Label htmlFor="isSystem">Системная схема</Label>
       </div>
 
       <Button type="submit" className="w-full">
-        {initialData ? "Update Schema" : "Create Schema"}
+        {initialData ? "Обновить схему" : "Создать схему"}
       </Button>
     </form>
   );
