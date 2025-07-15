@@ -13,8 +13,8 @@ import type { User, InsertUser } from "@shared/schema";
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [planFilter, setPlanFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [planFilter, setPlanFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
   const limit = 10;
@@ -27,8 +27,8 @@ export default function UsersPage() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchQuery) params.append("search", searchQuery);
-      if (statusFilter) params.append("status", statusFilter);
-      if (planFilter) params.append("plan", planFilter);
+      if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
+      if (planFilter && planFilter !== "all") params.append("plan", planFilter);
       params.append("page", page.toString());
       params.append("limit", limit.toString());
 
@@ -162,7 +162,7 @@ export default function UsersPage() {
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Status</SelectItem>
+                    <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="blocked">Blocked</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
@@ -173,7 +173,7 @@ export default function UsersPage() {
                     <SelectValue placeholder="All Plans" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Plans</SelectItem>
+                    <SelectItem value="all">All Plans</SelectItem>
                     <SelectItem value="free">Free</SelectItem>
                     <SelectItem value="pro">Pro</SelectItem>
                     <SelectItem value="enterprise">Enterprise</SelectItem>
