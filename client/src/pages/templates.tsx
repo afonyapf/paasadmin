@@ -1072,10 +1072,9 @@ function SectionForm({ initialData, onSubmit, sections }: {
 
       <div>
         <Label htmlFor="tableName">Привязанная таблица</Label>
-        <Input
-          id="tableName"
+        <TableTreeSelect
           value={formData.tableName}
-          onChange={(e) => setFormData({ ...formData, tableName: e.target.value })}
+          onValueChange={(value) => setFormData({ ...formData, tableName: value })}
         />
       </div>
 
@@ -1200,5 +1199,124 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
         {initialData ? "Обновить схему" : "Создать схему"}
       </Button>
     </form>
+  );
+}
+
+function TableTreeSelect({ value, onValueChange }: { 
+  value: string; 
+  onValueChange: (value: string) => void; 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
+
+  const { data: tableSchemasData } = useQuery<{ schemas: GlobalTableSchema[]; total: number }>({
+    queryKey: ["/api/table-schemas"],
+  });
+
+  const schemaTypes = [
+    { value: "directory", label: "📗 Справочники", icon: "📗" },
+    { value: "document", label: "📘 Документы", icon: "📘" },
+    { value: "register", label: "📙 Регистры", icon: "📙" },
+    { value: "journal", label: "📒 Журналы", icon: "📒" },
+    { value: "report", label: "📓 Отчёты", icon: "📓" },
+    { value: "procedure", label: "📕 Обработки", icon: "📕" },
+  ];
+
+  const schemas = tableSchemasData?.schemas || [];
+  
+  const selectedSchema = schemas.find(schema => schema.code === value);
+  const selectedType = schemaTypes.find(type => type.value === selectedSchema?.type);
+
+  const toggleTypeExpansion = (typeValue: string) => {
+    const newExpanded = new Set(expandedTypes);
+    if (newExpanded.has(typeValue)) {
+      newExpanded.delete(typeValue);
+    } else {
+      newExpanded.add(typeValue);
+    }
+    setExpandedTypes(newExpanded);
+  };
+
+  const displayValue = selectedSchema 
+    ? `${selectedType?.icon} ${selectedSchema.name} (${selectedSchema.code})`
+    : "Выберите таблицу";
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline"
+        role="combobox"
+        aria-expanded={isOpen}
+        className="w-full justify-between"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {displayValue}
+        <span className="ml-2 h-4 w-4 shrink-0 opacity-50">▼</span>
+      </Button>
+      
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+          <div className="p-1">
+            <div 
+              className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded"
+              onClick={() => {
+                onValueChange("");
+                setIsOpen(false);
+              }}
+            >
+              <span className="text-gray-500">Не выбрано</span>
+            </div>
+            
+            {schemaTypes.map(type => {
+              const typeSchemas = schemas.filter(schema => schema.type === type.value);
+              const isExpanded = expandedTypes.has(type.value);
+              
+              if (typeSchemas.length === 0) return null;
+              
+              return (
+                <div key={type.value}>
+                  <div 
+                    className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded flex items-center justify-between"
+                    onClick={() => toggleTypeExpansion(type.value)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>{type.icon}</span>
+                      <span className="font-medium">{type.value}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {typeSchemas.length}
+                      </Badge>
+                    </div>
+                    <span className="text-xs">{isExpanded ? "▼" : "▶"}</span>
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="ml-4 border-l border-gray-200">
+                      {typeSchemas.map(schema => (
+                        <div
+                          key={schema.id}
+                          className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded flex items-center space-x-2"
+                          onClick={() => {
+                            onValueChange(schema.code);
+                            setIsOpen(false);
+                          }}
+                        >
+                          <span className="text-sm">{schema.name}</span>
+                          <span className="text-xs text-gray-500">({schema.code})</span>
+                          {schema.isSystem && (
+                            <Badge variant="outline" className="text-xs">
+                              Системная
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
