@@ -1208,6 +1208,7 @@ function TableTreeSelect({ value, onValueChange }: {
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: tableSchemasData } = useQuery<{ schemas: GlobalTableSchema[]; total: number }>({
     queryKey: ["/api/table-schemas"],
@@ -1223,6 +1224,13 @@ function TableTreeSelect({ value, onValueChange }: {
   ];
 
   const schemas = tableSchemasData?.schemas || [];
+  
+  // Filter schemas based on search term
+  const filteredSchemas = schemas.filter(schema => 
+    searchTerm === "" || 
+    schema.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    schema.code.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   
   const selectedSchema = schemas.find(schema => schema.code === value);
   const selectedType = schemaTypes.find(type => type.value === selectedSchema?.type);
@@ -1244,6 +1252,26 @@ function TableTreeSelect({ value, onValueChange }: {
     e.stopPropagation();
     onValueChange(selectedValue);
     setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    // Auto-expand types that contain matching schemas
+    if (e.target.value) {
+      const newExpanded = new Set<string>();
+      schemaTypes.forEach(type => {
+        const hasMatchingSchema = schemas.some(schema => 
+          schema.type === type.value && 
+          (schema.name.toLowerCase().includes(e.target.value.toLowerCase()) ||
+           schema.code.toLowerCase().includes(e.target.value.toLowerCase()))
+        );
+        if (hasMatchingSchema) {
+          newExpanded.add(type.value);
+        }
+      });
+      setExpandedTypes(newExpanded);
+    }
   };
 
   const displayValue = selectedSchema 
@@ -1270,6 +1298,15 @@ function TableTreeSelect({ value, onValueChange }: {
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
           <div className="p-1">
+            <div className="px-2 py-2 border-b border-gray-200">
+              <Input
+                placeholder="Поиск по названию или коду таблицы..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="h-8"
+                autoFocus
+              />
+            </div>
             <div 
               className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded"
               onClick={(e) => handleSelectValue(e, "")}
@@ -1278,7 +1315,7 @@ function TableTreeSelect({ value, onValueChange }: {
             </div>
             
             {schemaTypes.map(type => {
-              const typeSchemas = schemas.filter(schema => schema.type === type.value);
+              const typeSchemas = filteredSchemas.filter(schema => schema.type === type.value);
               const isExpanded = expandedTypes.has(type.value);
               
               if (typeSchemas.length === 0) return null;
@@ -1301,21 +1338,39 @@ function TableTreeSelect({ value, onValueChange }: {
                   
                   {isExpanded && (
                     <div className="ml-4 border-l border-gray-200">
-                      {typeSchemas.map(schema => (
-                        <div
-                          key={schema.id}
-                          className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded flex items-center space-x-2"
-                          onClick={(e) => handleSelectValue(e, schema.code)}
-                        >
-                          <span className="text-sm">{schema.name}</span>
-                          <span className="text-xs text-gray-500">({schema.code})</span>
-                          {schema.isSystem && (
-                            <Badge variant="outline" className="text-xs">
-                              Системная
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
+                      {typeSchemas.map(schema => {
+                        // Highlight matching text
+                        const highlightText = (text: string, search: string) => {
+                          if (!search) return text;
+                          const regex = new RegExp(`(${search})`, 'gi');
+                          const parts = text.split(regex);
+                          return parts.map((part, index) => 
+                            regex.test(part) ? (
+                              <span key={index} className="bg-yellow-200 font-medium">{part}</span>
+                            ) : part
+                          );
+                        };
+
+                        return (
+                          <div
+                            key={schema.id}
+                            className="px-2 py-1 cursor-pointer hover:bg-gray-100 rounded flex items-center space-x-2"
+                            onClick={(e) => handleSelectValue(e, schema.code)}
+                          >
+                            <span className="text-sm">
+                              {highlightText(schema.name, searchTerm)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({highlightText(schema.code, searchTerm)})
+                            </span>
+                            {schema.isSystem && (
+                              <Badge variant="outline" className="text-xs">
+                                Системная
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
