@@ -567,17 +567,17 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to create schema");
+      if (!response.ok) throw new Error("Failed to create table");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/table-schemas"] });
       setIsCreateDialogOpen(false);
-      toast({ title: "Schema created successfully" });
+      toast({ title: "Таблица создана успешно" });
     },
     onError: (error: Error) => {
       toast({ 
-        title: "Error creating schema", 
+        title: "Ошибка создания таблицы", 
         description: error.message,
         variant: "destructive"
       });
@@ -591,17 +591,17 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error("Failed to update schema");
+      if (!response.ok) throw new Error("Failed to update table");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/table-schemas"] });
       setEditingSchema(null);
-      toast({ title: "Schema updated successfully" });
+      toast({ title: "Таблица обновлена успешно" });
     },
     onError: (error: Error) => {
       toast({ 
-        title: "Error updating schema", 
+        title: "Ошибка обновления таблицы", 
         description: error.message,
         variant: "destructive"
       });
@@ -613,15 +613,15 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
       const response = await fetch(`/api/table-schemas/${id}`, {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error("Failed to delete schema");
+      if (!response.ok) throw new Error("Failed to delete table");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/table-schemas"] });
-      toast({ title: "Schema deleted successfully" });
+      toast({ title: "Таблица удалена успешно" });
     },
     onError: (error: Error) => {
       toast({ 
-        title: "Error deleting schema", 
+        title: "Ошибка удаления таблицы", 
         description: error.message,
         variant: "destructive"
       });
@@ -642,9 +642,20 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
   };
 
   const handleDeleteSchema = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this schema?")) {
+    if (window.confirm("Вы уверены, что хотите удалить эту таблицу?")) {
       deleteSchemaMutation.mutate(id);
     }
+  };
+
+  const handleCloneSchema = (schema: GlobalTableSchema) => {
+    // Create a copy of the schema with modified name and code
+    const clonedSchema = {
+      ...schema,
+      name: `${schema.name} (копия)`,
+      code: `${schema.code}_copy`,
+      isSystem: false,
+    };
+    setEditingSchema(clonedSchema);
   };
 
   const schemaTypes = [
@@ -664,7 +675,7 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
         <h2 className="text-xl font-semibold">Структура таблиц</h2>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Создать схему
+          Создать таблицу
         </Button>
       </div>
 
@@ -690,12 +701,12 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
         <CardHeader>
           <CardTitle>Структура таблиц</CardTitle>
           <CardDescription>
-            Централизованное управление схемами таблиц, используемых в шаблонах
+            Централизованное управление таблицами, используемыми в шаблонах
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Загрузка схем...</div>
+            <div className="text-center py-8">Загрузка таблиц...</div>
           ) : (
             <Accordion type="single" collapsible className="w-full">
               {schemaTypes.map(type => {
@@ -713,9 +724,9 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Название</TableHead>
-                            <TableHead>Код</TableHead>
-                            <TableHead>Системная</TableHead>
+                            <TableHead>Название таблицы</TableHead>
+                            <TableHead>Техническое имя</TableHead>
+                            <TableHead>Тип</TableHead>
                             <TableHead>Действия</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -726,7 +737,7 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
                               <TableCell className="font-mono text-sm">{schema.code}</TableCell>
                               <TableCell>
                                 <Badge variant={schema.isSystem ? "default" : "secondary"}>
-                                  {schema.isSystem ? "Да" : "Нет"}
+                                  {schema.isSystem ? "Системная" : "Пользовательская"}
                                 </Badge>
                               </TableCell>
                               <TableCell>
@@ -735,6 +746,7 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setEditingSchema(schema)}
+                                    title="Редактировать"
                                   >
                                     <Edit className="w-4 h-4" />
                                   </Button>
@@ -742,8 +754,17 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDeleteSchema(schema.id)}
+                                    title="Удалить"
                                   >
                                     <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleCloneSchema(schema)}
+                                    title="Создать на основе"
+                                  >
+                                    <Plus className="w-4 h-4" />
                                   </Button>
                                 </div>
                               </TableCell>
@@ -760,31 +781,31 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
         </CardContent>
       </Card>
 
-      {/* Create Schema Dialog */}
+      {/* Create Table Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Создать новую схему</DialogTitle>
+            <DialogTitle>Создать новую таблицу</DialogTitle>
             <DialogDescription>
-              Создание новой схемы таблицы
+              Создание новой таблицы для использования в шаблонах
             </DialogDescription>
           </DialogHeader>
           <TableSchemaForm onSubmit={handleCreateSchema} schemaTypes={schemaTypes} />
         </DialogContent>
       </Dialog>
 
-      {/* Edit Schema Dialog */}
+      {/* Edit Table Dialog */}
       <Dialog open={!!editingSchema} onOpenChange={() => setEditingSchema(null)}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Edit Schema</DialogTitle>
+            <DialogTitle>{editingSchema?.id ? 'Редактировать таблицу' : 'Создать на основе'}</DialogTitle>
             <DialogDescription>
-              Update the schema information
+              {editingSchema?.id ? 'Обновление информации о таблице' : 'Создание новой таблицы на основе существующей'}
             </DialogDescription>
           </DialogHeader>
           <TableSchemaForm 
             initialData={editingSchema || undefined} 
-            onSubmit={handleUpdateSchema} 
+            onSubmit={editingSchema?.id ? handleUpdateSchema : handleCreateSchema} 
             schemaTypes={schemaTypes}
           />
         </DialogContent>
@@ -1138,11 +1159,51 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
     code: initialData?.code || "",
     type: initialData?.type || "directory",
     isSystem: initialData?.isSystem ?? false,
+    includeSystemFields: true,
+    customFields: [] as Array<{
+      name: string;
+      type: string;
+      required: boolean;
+      reference?: string;
+    }>,
   });
+
+  const fieldTypes = [
+    { value: "string", label: "Строка" },
+    { value: "number", label: "Число" },
+    { value: "boolean", label: "Логическое значение" },
+    { value: "date", label: "Дата" },
+    { value: "reference", label: "Ссылка" },
+    { value: "select", label: "Выбор" },
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
+  };
+
+  const addCustomField = () => {
+    setFormData({
+      ...formData,
+      customFields: [...formData.customFields, {
+        name: "",
+        type: "string",
+        required: false,
+      }],
+    });
+  };
+
+  const removeCustomField = (index: number) => {
+    setFormData({
+      ...formData,
+      customFields: formData.customFields.filter((_, i) => i !== index),
+    });
+  };
+
+  const updateCustomField = (index: number, field: Partial<typeof formData.customFields[0]>) => {
+    const updatedFields = [...formData.customFields];
+    updatedFields[index] = { ...updatedFields[index], ...field };
+    setFormData({ ...formData, customFields: updatedFields });
   };
 
   return (
@@ -1158,7 +1219,7 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
       </div>
       
       <div>
-        <Label htmlFor="code">Код</Label>
+        <Label htmlFor="code">Техническое имя</Label>
         <Input
           id="code"
           value={formData.code}
@@ -1168,7 +1229,7 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
       </div>
 
       <div>
-        <Label htmlFor="type">Тип</Label>
+        <Label htmlFor="type">Тип таблицы</Label>
         <Select
           value={formData.type}
           onValueChange={(value) => setFormData({ ...formData, type: value })}
@@ -1188,15 +1249,101 @@ function TableSchemaForm({ initialData, onSubmit, schemaTypes }: {
 
       <div className="flex items-center space-x-2">
         <Switch
+          id="includeSystemFields"
+          checked={formData.includeSystemFields}
+          onCheckedChange={(checked) => setFormData({ ...formData, includeSystemFields: checked })}
+        />
+        <Label htmlFor="includeSystemFields">Включить системные поля (created_at, updated_at, status, external_id, owner_id)</Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Switch
           id="isSystem"
           checked={formData.isSystem}
           onCheckedChange={(checked) => setFormData({ ...formData, isSystem: checked })}
         />
-        <Label htmlFor="isSystem">Системная схема</Label>
+        <Label htmlFor="isSystem">Системная таблица</Label>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>Пользовательские поля</Label>
+          <Button type="button" variant="outline" size="sm" onClick={addCustomField}>
+            <Plus className="w-4 h-4 mr-2" />
+            Добавить поле
+          </Button>
+        </div>
+        
+        {formData.customFields.map((field, index) => (
+          <div key={index} className="border rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Поле {index + 1}</Label>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => removeCustomField(index)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Название</Label>
+                <Input
+                  value={field.name}
+                  onChange={(e) => updateCustomField(index, { name: e.target.value })}
+                  placeholder="Название поля"
+                />
+              </div>
+              
+              <div>
+                <Label>Тип</Label>
+                <Select
+                  value={field.type}
+                  onValueChange={(value) => updateCustomField(index, { type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fieldTypes.map(type => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={field.required}
+                  onCheckedChange={(checked) => updateCustomField(index, { required: checked })}
+                />
+                <Label>Обязательное</Label>
+              </div>
+              
+              {field.type === "reference" && (
+                <div className="flex-1">
+                  <Label>Справочник-ссылка</Label>
+                  <Input
+                    value={field.reference || ""}
+                    onChange={(e) => updateCustomField(index, { reference: e.target.value })}
+                    placeholder="Название справочника"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       <Button type="submit" className="w-full">
-        {initialData ? "Обновить схему" : "Создать схему"}
+        {initialData?.id ? "Обновить таблицу" : "Создать таблицу"}
       </Button>
     </form>
   );
