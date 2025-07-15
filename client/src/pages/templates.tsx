@@ -968,14 +968,14 @@ function SectionForm({ initialData, onSubmit, sections }: {
       <div>
         <Label htmlFor="parentId">Parent Section</Label>
         <Select
-          value={formData.parentId?.toString() || ""}
-          onValueChange={(value) => setFormData({ ...formData, parentId: value ? parseInt(value) : null })}
+          value={formData.parentId?.toString() || "none"}
+          onValueChange={(value) => setFormData({ ...formData, parentId: value === "none" ? null : parseInt(value) })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select parent section" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None</SelectItem>
+            <SelectItem value="none">None</SelectItem>
             {sections.map(section => (
               <SelectItem key={section.id} value={section.id.toString()}>
                 {section.name}
