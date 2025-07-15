@@ -692,7 +692,7 @@ function TableSchemasTab({ schemas, isLoading }: { schemas: GlobalTableSchema[];
             variant={selectedType === type.value ? "default" : "outline"}
             onClick={() => setSelectedType(type.value)}
           >
-            {type.icon} {type.value}
+            {type.label}
           </Button>
         ))}
       </div>
