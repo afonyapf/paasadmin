@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
+import { MockStorage } from "./mock-storage";
 import { eq, desc, count, like, and, or } from "drizzle-orm";
 import {
   admins,
@@ -46,8 +47,20 @@ import {
   type InsertSystemMetric,
 } from "@shared/schema";
 
-const sql = neon(process.env.DATABASE_URL!);
-const db = drizzle(sql);
+// Use mock storage if no database URL is provided
+let db: any;
+let useMockStorage = false;
+
+try {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("No DATABASE_URL provided");
+  }
+  const sql = neon(process.env.DATABASE_URL);
+  db = drizzle(sql);
+} catch (error) {
+  console.log("⚠️  Database not available, using mock storage");
+  useMockStorage = true;
+}
 
 export interface IStorage {
   // Admin methods
@@ -557,4 +570,4 @@ export class DrizzleStorage implements IStorage {
   }
 }
 
-export const storage = new DrizzleStorage();
+export const storage = useMockStorage ? new MockStorage() : new DrizzleStorage();
