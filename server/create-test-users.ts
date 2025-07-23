@@ -1,64 +1,22 @@
 
 import { storage } from "./storage";
+import bcrypt from "bcryptjs";
 
-async function createTestUsers() {
-  try {
-    const testUsers = [
-      {
-        username: "john_doe",
-        email: "john@example.com",
-        name: "John Doe",
-        status: "active",
-        plan: "free",
-        avatar: null,
-        oauthProvider: null,
-        oauthId: null,
-      },
-      {
-        username: "jane_smith",
-        email: "jane@example.com", 
-        name: "Jane Smith",
-        status: "active",
-        plan: "pro",
-        avatar: null,
-        oauthProvider: null,
-        oauthId: null,
-      },
-      {
-        username: "bob_wilson",
-        email: "bob@example.com",
-        name: "Bob Wilson", 
-        status: "blocked",
-        plan: "free",
-        avatar: null,
-        oauthProvider: null,
-        oauthId: null,
-      },
-      {
-        username: "alice_johnson",
-        email: "alice@example.com",
-        name: "Alice Johnson",
-        status: "pending", 
-        plan: "enterprise",
-        avatar: null,
-        oauthProvider: null,
-        oauthId: null,
-      },
-    ];
-
-    for (const userData of testUsers) {
-      try {
-        await storage.createUser(userData);
-        console.log(`Пользователь ${userData.name} создан`);
-      } catch (error) {
-        console.log(`Пользователь ${userData.name} уже существует или ошибка:`, error);
-      }
-    }
-
-    console.log("Тестовые пользователи созданы!");
-  } catch (error) {
-    console.error("Ошибка при создании тестовых пользователей:", error);
+async function seed() {
+  // Создание тестового админа
+  const admin = await storage.getAdminByUsername("admin");
+  if (!admin) {
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    await storage.createAdmin({
+      username: "admin",
+      email: "admin@example.com",
+      password: hashedPassword,
+      name: "Администратор",
+      role: "admin"
+    });
+    console.log("Тестовый админ создан: admin/admin123");
   }
+  // TODO: Добавить создание шаблонов, разделов, таблиц и других тестовых данных
 }
 
-createTestUsers();
+seed().then(() => process.exit(0));

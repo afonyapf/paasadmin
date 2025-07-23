@@ -1,83 +1,70 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import type { Admin, LoginData } from "@shared/schema";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 
 export function useAuth() {
-  const { data: admin, isLoading } = useQuery<Admin | null>({
-    queryKey: ["/api/auth/me"],
+  const [, navigate] = useLocation();
+  
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["auth-user"],
     queryFn: async () => {
-      try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
-        if (response.status === 401) {
-          return null;
-        }
-        if (!response.ok) {
-          throw new Error("Failed to fetch user");
-        }
-        const data = await response.json();
-        return data.admin;
-      } catch (error) {
-        return null;
+      const response = await fetch("/api/auth/me");
+      if (!response.ok) {
+        throw new Error("Not authenticated");
       }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: false,
-  });
-
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const loginMutation = useMutation({
-    mutationFn: async (data: LoginData) => {
-      const response = await apiRequest("POST", "/api/auth/login", data);
       return response.json();
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/auth/me"], data.admin);
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", "/api/auth/logout");
-    },
-    onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/me"], null);
-      queryClient.clear();
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully.",
+  // Функция для выхода из системы
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      // Обновляем состояние авторизации
+      await refetch();
+      // Перенаправляем на страницу входа
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
+  // Функция для входа в систему
+  const login = async (username, password) => {
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
       });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || "Login failed");
+      }
+
+      // Обновляем состояние авторизации
+      await refetch();
+      // Перенаправляем на главную страницу
+      navigate("/");
+      return true;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
+  };
 
   return {
-    admin,
+    admin: data?.admin,
     isLoading,
-    login: loginMutation.mutate,
-    logout: logoutMutation.mutate,
-    isLoginLoading: loginMutation.isPending,
-    isLogoutLoading: logoutMutation.isPending,
+    error,
+    login,
+    logout,
+    refetch,
   };
 }

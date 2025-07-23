@@ -1,13 +1,13 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
+import FileStoreFactory from "session-file-store";
 import { storage } from "./storage";
 import { loginSchema, insertUserSchema, insertWorkspaceSchema, insertTariffSchema, insertTemplateSchema, insertCustomDomainSchema } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
-const PgSession = connectPgSimple(session);
+const FileStore = FileStoreFactory(session);
 
 declare module "express-session" {
   interface SessionData {
@@ -47,11 +47,7 @@ const logAudit = (action: string, resourceType: string, resourceId?: number) => 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session configuration
   app.use(session({
-    store: new PgSession({
-      conString: process.env.DATABASE_URL,
-      tableName: 'session',
-      createTableIfMissing: true,
-    }),
+    store: new FileStore({}),
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,

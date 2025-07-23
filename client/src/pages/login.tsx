@@ -1,77 +1,76 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Shield } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema, type LoginData } from "@shared/schema";
+import { useState } from "react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import { useToast } from "../hooks/use-toast";
+import { useAuth } from "../hooks/use-auth";
 
 export default function LoginPage() {
-  const { login, isLoginLoading } = useAuth();
-  
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginData>({
-    resolver: zodResolver(loginSchema),
-  });
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const { login } = useAuth();
 
-  const onSubmit = (data: LoginData) => {
-    login(data);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await login(username, password);
+      
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Login failed",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-muted/20">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-primary rounded-md flex items-center justify-center">
-              <Shield className="w-6 h-6 text-primary-foreground" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
-          <CardDescription className="text-center">
-            Enter your credentials to access the admin panel
-          </CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+      <Card className="w-[350px]">
+        <CardHeader>
+          <CardTitle>Admin Login</CardTitle>
+          <CardDescription>Enter your credentials to access the admin panel</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
-                {...register("username")}
-              />
-              {errors.username && (
-                <p className="text-sm text-destructive">{errors.username.message}</p>
-              )}
+        <form onSubmit={handleSubmit}>
+          <CardContent>
+            <div className="grid w-full items-center gap-4">
+              <div className="flex flex-col space-y-1.5">
+                <Input
+                  id="username"
+                  placeholder="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex flex-col space-y-1.5">
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                {...register("password")}
-              />
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
-              )}
-            </div>
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoginLoading}
-            >
-              {isLoginLoading ? "Signing in..." : "Sign in"}
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Logging in..." : "Login"}
             </Button>
-          </form>
-        </CardContent>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   );

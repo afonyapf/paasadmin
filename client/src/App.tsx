@@ -1,23 +1,25 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import LoginPage from "@/pages/login";
-import DashboardPage from "@/pages/dashboard";
-import UsersPage from "@/pages/users";
-import WorkspacesPage from "@/pages/workspaces";
-import TariffsPage from "@/pages/tariffs";
-import TemplatesPage from "@/pages/templates";
-import DomainsPage from "@/pages/domains";
-import AuditLogsPage from "@/pages/audit-logs";
-import NotFound from "@/pages/not-found";
-import { useAuth } from "@/hooks/use-auth";
-import AdminLayout from "@/components/admin-layout";
+import { Toaster } from "./components/ui/toaster";
+import { TooltipProvider } from "./components/ui/tooltip";
+import LoginPage from "./pages/login";
+import DashboardPage from "./pages/dashboard";
+import UsersPage from "./pages/users";
+import WorkspacesPage from "./pages/workspaces";
+import TariffsPage from "./pages/tariffs";
+import TemplatesPage from "./pages/templates";
+import DomainsPage from "./pages/domains";
+import AuditLogsPage from "./pages/audit-logs";
+import NotFound from "./pages/not-found";
+import { useAuth } from "./hooks/use-auth";
+import AdminLayout from "./components/admin-layout";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { admin, isLoading } = useAuth();
+  const { admin, isLoading, error } = useAuth();
+  const [, navigate] = useLocation();
 
+  // Отображаем индикатор загрузки
   if (isLoading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center">
@@ -26,10 +28,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Если пользователь не авторизован, перенаправляем на страницу входа
   if (!admin) {
-    return <LoginPage />;
+    // Используем принудительное перенаправление
+    navigate("/login");
+    return null;
   }
 
+  // Если пользователь авторизован, отображаем содержимое
   return <AdminLayout>{children}</AdminLayout>;
 }
 
