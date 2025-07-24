@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { TableFormModal } from "../components/table-form-modal";
+import { SectionsManagement } from "../components/sections-management";
 
 interface TableField {
   name: string;
@@ -346,7 +347,7 @@ export default function TemplatesPage() {
           }`}
           onClick={() => setActiveTab('sections')}
         >
-          Секции
+          Разделы платформы
         </button>
         <button
           className={`px-6 py-3 rounded-t-lg font-medium ${
@@ -364,6 +365,23 @@ export default function TemplatesPage() {
         {/* Templates Tab */}
         {activeTab === 'templates' && (
           <div className="p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-2">Шаблоны Workspace</h2>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 className="font-medium text-blue-900 mb-2">Назначение:</h3>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Создание workspace при регистрации или вручную</li>
+                  <li>• Базируются на типе (Клиент, Поставщик)</li>
+                </ul>
+                <h3 className="font-medium text-blue-900 mb-2 mt-3">Содержат:</h3>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Роли и их права</li>
+                  <li>• Структуру разделов (через секции)</li>
+                  <li>• Разделение на системные и пользовательские сущности</li>
+                </ul>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {templates.map((template) => (
                 <Card key={template.id} className="cursor-pointer hover:shadow-md transition-shadow"
@@ -372,21 +390,21 @@ export default function TemplatesPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg">{template.name}</CardTitle>
-                        <CardDescription>v{template.version}</CardDescription>
+                        <CardDescription>v{template.version} • {template.type}</CardDescription>
                       </div>
                       <div className="flex flex-col space-y-1">
                         {template.isDefault && (
                           <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                            Default
+                            По умолчанию
                           </span>
                         )}
                         {template.isActive ? (
                           <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
-                            Active
+                            Активен
                           </span>
                         ) : (
                           <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded">
-                            Inactive
+                            Неактивен
                           </span>
                         )}
                       </div>
@@ -394,11 +412,15 @@ export default function TemplatesPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-gray-600 mb-3">{template.description}</p>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="capitalize text-gray-500">{template.type}</span>
-                      <span className="text-gray-500">
-                        {parseTemplateData(template).tables.length} tables
-                      </span>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-gray-50 p-2 rounded">
+                        <div className="font-medium">Таблицы</div>
+                        <div className="text-gray-600">{parseTemplateData(template).tables.length}</div>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded">
+                        <div className="font-medium">Тип</div>
+                        <div className="text-gray-600 capitalize">{template.type}</div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -410,11 +432,7 @@ export default function TemplatesPage() {
         {/* Sections Tab */}
         {activeTab === 'sections' && (
           <div className="p-6">
-            <div className="text-center py-12 text-gray-500">
-              <div className="text-4xl mb-4">🔧</div>
-              <h3 className="text-lg font-medium mb-2">Управление секциями</h3>
-              <p>Здесь будет реализовано управление секциями шаблонов</p>
-            </div>
+            <SectionsManagement />
           </div>
         )}
 

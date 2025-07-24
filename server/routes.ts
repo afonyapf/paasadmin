@@ -504,6 +504,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/sections/:id/toggle', requireAuth, logAudit('toggle', 'section'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const section = await storage.getSectionById(id);
+      if (!section) {
+        return res.status(404).json({ message: "Section not found" });
+      }
+      
+      const updatedSection = await storage.updateSection(id, { isEnabled: !section.isEnabled });
+      res.json(updatedSection);
+    } catch (error) {
+      console.error('Toggle section error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Global table schema routes
   app.get('/api/table-schemas', requireAuth, async (req: Request, res: Response) => {
     try {

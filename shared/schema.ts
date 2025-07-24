@@ -91,10 +91,11 @@ export const sections = sqliteTable("sections", {
   name: text("name").notNull(),
   parentId: integer("parent_id").references((): any => sections.id),
   tableName: text("table_name"),
-  isSystem: integer("is_system", { mode: 'boolean' }).notNull().default(false),
   accessType: text("access_type").notNull().default("open"), // open, restricted
+  applicability: text("applicability").notNull().default("local"), // global, local
+  isSystem: integer("is_system", { mode: 'boolean' }).notNull().default(false),
+  isEnabled: integer("is_enabled", { mode: 'boolean' }).notNull().default(true),
   description: text("description"),
-  status: integer("status", { mode: 'boolean' }).notNull().default(true),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
