@@ -1,24 +1,22 @@
-//import { pgTable, text, serial, integer, boolean, timestamp, uuid, jsonb } from "drizzle-orm/pg-core";
-// Используйте sqlite-специфичные методы
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Admins table
-export const admins = pgTable("admins", {
-  id: serial("id").primaryKey(),
+export const admins = sqliteTable("admins", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
   role: text("role").notNull().default("admin"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Users table
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
@@ -27,145 +25,150 @@ export const users = pgTable("users", {
   plan: text("plan").notNull().default("free"), // free, pro, enterprise
   oauthProvider: text("oauth_provider"),
   oauthId: text("oauth_id"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Templates table
+export const templates = sqliteTable("templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // client, supplier
+  version: text("version").notNull().default("1.0.0"),
+  isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
+  isDefault: integer("is_default", { mode: 'boolean' }).notNull().default(false),
+  config: text("config").notNull(), // JSON as text in SQLite
+  tables: text("tables").notNull().default('[]'), // JSON array of table metadata
+  tariffId: integer("tariff_id").references(() => tariffs.id),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Tariffs table
+export const tariffs = sqliteTable("tariffs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: integer("price").notNull(), // in cents
+  features: text("features").notNull(), // JSON as text in SQLite
+  limits: text("limits").notNull(), // JSON as text in SQLite
+  isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Workspaces table
-export const workspaces = pgTable("workspaces", {
-  id: serial("id").primaryKey(),
+export const workspaces = sqliteTable("workspaces", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description"),
   ownerId: integer("owner_id").references(() => users.id).notNull(),
   status: text("status").notNull().default("active"), // active, suspended, deleted
   templateId: integer("template_id").references(() => templates.id),
-  settings: jsonb("settings"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Tariffs table
-export const tariffs = pgTable("tariffs", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  price: integer("price").notNull(), // in cents
-  features: jsonb("features").notNull(),
-  limits: jsonb("limits").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Templates table - updated according to spec
-export const templates = pgTable("templates", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  type: text("type").notNull(), // client, supplier
-  version: text("version").notNull().default("1.0"),
-  isActive: boolean("is_active").notNull().default(true),
-  isDefault: boolean("is_default").notNull().default(false),
-  config: jsonb("config").notNull(),
-  tariffId: integer("tariff_id").references(() => tariffs.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  settings: text("settings"), // JSON as text in SQLite
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Template versions table
-export const templateVersions = pgTable("template_versions", {
-  id: serial("id").primaryKey(),
+export const templateVersions = sqliteTable("template_versions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   templateId: integer("template_id").references(() => templates.id).notNull(),
   version: text("version").notNull(),
-  config: jsonb("config").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  config: text("config").notNull(), // JSON as text in SQLite
+  tables: text("tables").notNull().default('[]'), // JSON array of table metadata
+  diff: text("diff"), // JSON diff from previous version
+  isApplied: integer("is_applied", { mode: 'boolean' }).notNull().default(false),
+  rollbackable: integer("rollbackable", { mode: 'boolean' }).notNull().default(true),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   createdBy: integer("created_by").references(() => admins.id).notNull(),
 });
 
 // Sections table (platform sections/features)
-export const sections = pgTable("sections", {
-  id: serial("id").primaryKey(),
+export const sections = sqliteTable("sections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  parentId: integer("parent_id").references(() => sections.id),
+  parentId: integer("parent_id").references((): any => sections.id),
   tableName: text("table_name"),
-  isSystem: boolean("is_system").notNull().default(false),
+  isSystem: integer("is_system", { mode: 'boolean' }).notNull().default(false),
   accessType: text("access_type").notNull().default("open"), // open, restricted
   description: text("description"),
-  status: boolean("status").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  status: integer("status", { mode: 'boolean' }).notNull().default(true),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Global table schemas
-export const globalTableSchemas = pgTable("global_table_schemas", {
-  id: serial("id").primaryKey(),
+export const globalTableSchemas = sqliteTable("global_table_schemas", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   code: text("code").notNull().unique(),
   type: text("type").notNull(), // directory, document, register, journal, report, procedure
-  isSystem: boolean("is_system").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isSystem: integer("is_system", { mode: 'boolean' }).notNull().default(false),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Global table fields
-export const globalTableFields = pgTable("global_table_fields", {
-  id: serial("id").primaryKey(),
+export const globalTableFields = sqliteTable("global_table_fields", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   schemaId: integer("schema_id").references(() => globalTableSchemas.id).notNull(),
   name: text("name").notNull(),
   label: text("label").notNull(),
   type: text("type").notNull(), // string, number, boolean, date, reference, select
-  isRequired: boolean("is_required").notNull().default(false),
-  isSystem: boolean("is_system").notNull().default(false),
+  isRequired: integer("is_required", { mode: 'boolean' }).notNull().default(false),
+  isSystem: integer("is_system", { mode: 'boolean' }).notNull().default(false),
   referenceTable: text("reference_table"), // for reference type
-  options: jsonb("options"), // for select type
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  options: text("options"), // for select type, JSON as text in SQLite
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Template sections relationship
-export const templateSections = pgTable("template_sections", {
-  id: serial("id").primaryKey(),
+export const templateSections = sqliteTable("template_sections", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   templateId: integer("template_id").references(() => templates.id).notNull(),
   sectionId: integer("section_id").references(() => sections.id).notNull(),
-  isEnabled: boolean("is_enabled").notNull().default(true),
+  isEnabled: integer("is_enabled", { mode: 'boolean' }).notNull().default(true),
 });
 
 // Template table schemas relationship
-export const templateTableSchemas = pgTable("template_table_schemas", {
-  id: serial("id").primaryKey(),
+export const templateTableSchemas = sqliteTable("template_table_schemas", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   templateId: integer("template_id").references(() => templates.id).notNull(),
   schemaId: integer("schema_id").references(() => globalTableSchemas.id).notNull(),
-  isEnabled: boolean("is_enabled").notNull().default(true),
+  isEnabled: integer("is_enabled", { mode: 'boolean' }).notNull().default(true),
 });
 
 // Custom domains table
-export const customDomains = pgTable("custom_domains", {
-  id: serial("id").primaryKey(),
+export const customDomains = sqliteTable("custom_domains", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   domain: text("domain").notNull().unique(),
   workspaceId: integer("workspace_id").references(() => workspaces.id).notNull(),
   sslStatus: text("ssl_status").notNull().default("pending"), // pending, active, failed
   verificationStatus: text("verification_status").notNull().default("pending"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Audit logs table
-export const auditLogs = pgTable("audit_logs", {
-  id: serial("id").primaryKey(),
+export const auditLogs = sqliteTable("audit_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   action: text("action").notNull(),
   resourceType: text("resource_type").notNull(),
   resourceId: integer("resource_id"),
   userId: integer("user_id").references(() => users.id),
   adminId: integer("admin_id").references(() => admins.id),
-  details: jsonb("details"),
+  details: text("details"), // JSON as text in SQLite
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // System metrics table
-export const systemMetrics = pgTable("system_metrics", {
-  id: serial("id").primaryKey(),
+export const systemMetrics = sqliteTable("system_metrics", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   metricName: text("metric_name").notNull(),
   value: integer("value").notNull(),
-  date: timestamp("date").defaultNow().notNull(),
+  date: text("date").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Insert schemas

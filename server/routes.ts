@@ -35,7 +35,7 @@ const logAudit = (action: string, resourceType: string, resourceId?: number) => 
         adminId: req.session.adminId,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent') || '',
-        details: { body: req.body, params: req.params, query: req.query },
+        details: JSON.stringify({ body: req.body, params: req.params, query: req.query }),
       });
     } catch (error) {
       console.error('Audit logging failed:', error);
@@ -508,13 +508,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/table-schemas', requireAuth, async (req: Request, res: Response) => {
     try {
       const { type, search, limit, offset } = req.query;
-      const schemas = await storage.getGlobalTableSchemas({
+      const result = await storage.getGlobalTableSchemas({
         type: type as string,
         search: search as string,
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
       });
-      res.json(schemas);
+      
+      // Add fields to each schema
+      const schemasWithFields = await Promise.all(
+        result.schemas.map(async (schema) => {
+          const fields = await storage.getGlobalTableFields(schema.id);
+          return {
+            ...schema,
+            fields: fields.map(field => ({
+              name: field.name,
+              type: field.type,
+              isSystem: field.isSystem,
+              isRequired: field.isRequired,
+              options: field.options ? JSON.parse(field.options) : undefined,
+              referenceTable: field.referenceTable
+            }))
+          };
+        })
+      );
+      
+      res.json(schemasWithFields);
     } catch (error) {
       console.error('Get table schemas error:', error);
       res.status(500).json({ message: "Internal server error" });
@@ -524,14 +543,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/table-schemas/:id', requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const schema = await storage.getGlobalTableSchemaById(id);
+      const tableSchema = await storage.getGlobalTableSchemaById(id);
       
-      if (!schema) {
+      if (!tableSchema) {
         return res.status(404).json({ message: "Table schema not found" });
       }
       
       const fields = await storage.getGlobalTableFields(id);
-      res.json({ ...schema, fields });
+      res.json({ ...tableSchema, fields });
     } catch (error) {
       console.error('Get table schema error:', error);
       res.status(500).json({ message: "Internal server error" });
@@ -540,19 +559,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/table-schemas', requireAuth, logAudit('create', 'table_schema'), async (req: Request, res: Response) => {
     try {
-      const { fields, ...schemaData } = req.body;
-      const schema = await storage.createGlobalTableSchema(schemaData);
-      
+      console.log('POST /api/table-schemas body:', req.body);
+      const { fields, ...rest } = req.body;
+      // Оставляем только нужные поля для схемы
+      const schemaData = {
+        name: rest.name,
+        code: rest.code,
+        type: rest.type,
+        isSystem: rest.isSystem ?? false,
+      };
+      console.log('Перед вставкой схемы таблицы в БД:', schemaData);
+      const tableSchema = await storage.createGlobalTableSchema(schemaData);
+
       // Create fields if provided
-      if (fields && fields.length > 0) {
+      if (fields && Array.isArray(fields) && fields.length > 0) {
         for (const field of fields) {
-          await storage.createGlobalTableField({ ...field, schemaId: schema.id });
+          console.log('Creating field:', field);
+          await storage.createGlobalTableField({
+            ...field,
+            schemaId: tableSchema.id,
+            label: field.name
+          });
         }
       }
-      
-      res.status(201).json(schema);
+
+      res.status(201).json(tableSchema);
     } catch (error) {
       console.error('Create table schema error:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -562,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const { fields, ...schemaData } = req.body;
       
-      const schema = await storage.updateGlobalTableSchema(id, schemaData);
+      const tableSchema = await storage.updateGlobalTableSchema(id, schemaData);
       
       // Update fields if provided
       if (fields) {
@@ -573,11 +610,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         for (const field of fields) {
-          await storage.createGlobalTableField({ ...field, schemaId: id });
+          await storage.createGlobalTableField({ 
+            ...field, 
+            schemaId: id,
+            label: field.name
+          });
         }
       }
       
-      res.json(schema);
+      res.json(tableSchema);
     } catch (error) {
       console.error('Update table schema error:', error);
       res.status(500).json({ message: "Internal server error" });
@@ -727,6 +768,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get audit logs error:', error);
       res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Translation route
+  app.post('/api/translate', async (req: Request, res: Response) => {
+    try {
+      const { text } = req.body;
+      
+      const dictionary: Record<string, string> = {
+        'новая': 'new', 'таблица': 'table', 'клиенты': 'clients',
+        'пользователи': 'users', 'заказы': 'orders', 'товары': 'products',
+        'поставщики': 'suppliers', 'склады': 'warehouses',
+        'отчет': 'report', 'документ': 'document', 'справочник': 'directory',
+        'регистр': 'register', 'журнал': 'journal', 'обработка': 'procedure',
+        'номенклатура': 'nomenclature', 'счета': 'invoices', 'платежи': 'payments',
+        'остатки': 'balance', 'движения': 'movements', 'активность': 'activity'
+      };
+      
+      const translated = text.toLowerCase()
+        .split(/\s+/)
+        .map((word: string) => dictionary[word] || word)
+        .join('_')
+        .replace(/[^a-z0-9_]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+      
+      res.json({ translated });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to translate" });
     }
   });
 

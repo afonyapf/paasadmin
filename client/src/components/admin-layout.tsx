@@ -35,15 +35,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {menuItems.map((item) => (
               <li key={item.path}>
                 <Link href={item.path}>
-                  <a
-                    className={`block px-4 py-2 rounded-md ${
+                  <span
+                    className={`block px-4 py-2 rounded-md cursor-pointer ${
                       location === item.path
                         ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
                         : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     }`}
                   >
                     {item.name}
-                  </a>
+                  </span>
                 </Link>
               </li>
             ))}
@@ -72,8 +72,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {menuItems.map((item) => (
                 <li key={item.path}>
                   <Link href={item.path}>
-                    <a
-                      className={`block px-4 py-2 rounded-md ${
+                    <span
+                      className={`block px-4 py-2 rounded-md cursor-pointer ${
                         location === item.path
                           ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
                           : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -81,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {item.name}
-                    </a>
+                    </span>
                   </Link>
                 </li>
               ))}

@@ -358,17 +358,20 @@ export class DrizzleStorage implements IStorage {
     return result[0];
   }
 
-  async createGlobalTableSchema(schema: schema.InsertGlobalTableSchema): Promise<schema.GlobalTableSchema> {
-    const result = await db.insert(schema.globalTableSchemas).values(schema).returning();
+  async createGlobalTableSchema(tableSchemaData: schema.InsertGlobalTableSchema): Promise<schema.GlobalTableSchema> {
+    const result = await db.insert(schema.globalTableSchemas).values(tableSchemaData).returning();
     return result[0];
   }
 
-  async updateGlobalTableSchema(id: number, schema: Partial<schema.InsertGlobalTableSchema>): Promise<schema.GlobalTableSchema> {
-    const result = await db.update(schema.globalTableSchemas).set(schema).where(eq(schema.globalTableSchemas.id, id)).returning();
+  async updateGlobalTableSchema(id: number, tableSchemaData: Partial<schema.InsertGlobalTableSchema>): Promise<schema.GlobalTableSchema> {
+    const result = await db.update(schema.globalTableSchemas).set(tableSchemaData).where(eq(schema.globalTableSchemas.id, id)).returning();
     return result[0];
   }
 
   async deleteGlobalTableSchema(id: number): Promise<void> {
+    // Delete fields first
+    await db.delete(schema.globalTableFields).where(eq(schema.globalTableFields.schemaId, id));
+    // Then delete table schema
     await db.delete(schema.globalTableSchemas).where(eq(schema.globalTableSchemas.id, id));
   }
 
