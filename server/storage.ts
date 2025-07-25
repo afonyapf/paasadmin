@@ -1,10 +1,17 @@
+<<<<<<< HEAD
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import * as schema from "@shared/schema";
 import dotenv from "dotenv";
 dotenv.config();
+=======
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
+import { MockStorage } from "./mock-storage";
+>>>>>>> 30d8337fee0805cae14e153aa3a31e5eb1e93542
 import { eq, desc, count, like, and, or } from "drizzle-orm";
 
+<<<<<<< HEAD
 // Use the DATABASE_URL from .env
 import path from 'path';
 const dbPath = process.env.DATABASE_URL?.replace('file:', '') || './database.db';
@@ -12,6 +19,22 @@ const absoluteDbPath = path.isAbsolute(dbPath) ? dbPath : path.resolve(process.c
 console.log(`Storage connecting to database at: ${absoluteDbPath}`);
 const sqlite = new Database(absoluteDbPath, { verbose: console.log });
 const db = drizzle(sqlite, { schema });
+=======
+// Use mock storage if no database URL is provided
+let db: any;
+let useMockStorage = false;
+
+try {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("No DATABASE_URL provided");
+  }
+  const sql = neon(process.env.DATABASE_URL);
+  db = drizzle(sql);
+} catch (error) {
+  console.log("⚠️  Database not available, using mock storage");
+  useMockStorage = true;
+}
+>>>>>>> 30d8337fee0805cae14e153aa3a31e5eb1e93542
 
 export interface IStorage {
   // Admin methods
@@ -524,4 +547,4 @@ export class DrizzleStorage implements IStorage {
   }
 }
 
-export const storage = new DrizzleStorage();
+export const storage = useMockStorage ? new MockStorage() : new DrizzleStorage();
