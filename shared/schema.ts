@@ -62,11 +62,15 @@ export const tariffs = sqliteTable("tariffs", {
 export const workspaces = sqliteTable("workspaces", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
   description: text("description"),
   ownerId: integer("owner_id").references(() => users.id).notNull(),
-  status: text("status").notNull().default("active"), // active, suspended, deleted
+  status: text("status").notNull().default("active"), // active, suspended, archived
+  type: text("type").notNull().default("client"), // client, supplier
   templateId: integer("template_id").references(() => templates.id),
+  tariffId: integer("tariff_id").references(() => tariffs.id),
   settings: text("settings"), // JSON as text in SQLite
+  dataSize: integer("data_size").default(0), // in bytes
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
@@ -172,6 +176,147 @@ export const systemMetrics = sqliteTable("system_metrics", {
   date: text("date").notNull().default("CURRENT_TIMESTAMP"),
 });
 
+// User sessions table
+export const userSessions = sqliteTable("user_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  sessionId: text("session_id").notNull().unique(),
+  startTime: text("start_time").notNull().default("CURRENT_TIMESTAMP"),
+  endTime: text("end_time"),
+  duration: integer("duration"), // in seconds
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  isActive: integer("is_active", { mode: 'boolean' }).notNull().default(true),
+});
+
+// API metrics table
+export const apiMetrics = sqliteTable("api_metrics", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  endpoint: text("endpoint").notNull(),
+  method: text("method").notNull(),
+  statusCode: integer("status_code").notNull(),
+  responseTime: integer("response_time").notNull(), // in milliseconds
+  timestamp: text("timestamp").notNull().default("CURRENT_TIMESTAMP"),
+  userId: integer("user_id").references(() => users.id),
+  errorMessage: text("error_message"),
+});
+
+// Feature usage table
+export const featureUsage = sqliteTable("feature_usage", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  workspaceId: integer("workspace_id").references(() => workspaces.id).notNull(),
+  featureName: text("feature_name").notNull(),
+  usageCount: integer("usage_count").notNull().default(1),
+  firstUsed: text("first_used").notNull().default("CURRENT_TIMESTAMP"),
+  lastUsed: text("last_used").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Revenue tracking table
+export const revenueEvents = sqliteTable("revenue_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  eventType: text("event_type").notNull(), // subscription, upgrade, downgrade, churn
+  amount: integer("amount").notNull(), // in cents
+  currency: text("currency").notNull().default("USD"),
+  planFrom: text("plan_from"),
+  planTo: text("plan_to"),
+  timestamp: text("timestamp").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Customer satisfaction table
+export const customerFeedback = sqliteTable("customer_feedback", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(), // csat, nps, support
+  score: integer("score").notNull(),
+  comment: text("comment"),
+  timestamp: text("timestamp").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Support tickets table
+export const supportTickets = sqliteTable("support_tickets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  subject: text("subject").notNull(),
+  status: text("status").notNull().default("open"), // open, in_progress, resolved, closed
+  priority: text("priority").notNull().default("medium"), // low, medium, high, urgent
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  firstResponseAt: text("first_response_at"),
+  resolvedAt: text("resolved_at"),
+  closedAt: text("closed_at"),
+});
+
+// Companies table
+export const companies = sqliteTable("companies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  website: text("website"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  logo: text("logo"),
+  status: text("status").notNull().default("active"), // active, inactive
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Workspace companies relationship
+export const workspaceCompanies = sqliteTable("workspace_companies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  workspaceId: integer("workspace_id").references(() => workspaces.id).notNull(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Workspace members table
+export const workspaceMembers = sqliteTable("workspace_members", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  workspaceId: integer("workspace_id").references(() => workspaces.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  role: text("role").notNull().default("viewer"), // owner, admin, manager, viewer
+  status: text("status").notNull().default("active"), // active, inactive, pending
+  invitedBy: integer("invited_by").references(() => users.id),
+  invitedAt: text("invited_at").notNull().default("CURRENT_TIMESTAMP"),
+  joinedAt: text("joined_at"),
+});
+
+// Workspace backups table
+export const workspaceBackups = sqliteTable("workspace_backups", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  workspaceId: integer("workspace_id").references(() => workspaces.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  filePath: text("file_path").notNull(),
+  fileSize: integer("file_size"), // in bytes
+  status: text("status").notNull().default("pending"), // pending, completed, failed
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  completedAt: text("completed_at"),
+});
+
+// Workspace access control table
+export const workspaceAccessControl = sqliteTable("workspace_access_control", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  workspaceId: integer("workspace_id").references(() => workspaces.id).notNull(),
+  sectionId: integer("section_id").references(() => sections.id).notNull(),
+  isEnabled: integer("is_enabled", { mode: 'boolean' }).notNull().default(true),
+  overrideTariff: integer("override_tariff", { mode: 'boolean' }).notNull().default(false),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Workspace usage metrics table
+export const workspaceUsageMetrics = sqliteTable("workspace_usage_metrics", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  workspaceId: integer("workspace_id").references(() => workspaces.id).notNull(),
+  metricType: text("metric_type").notNull(), // sessions, api_requests, storage_used, feature_usage
+  value: integer("value").notNull(),
+  date: text("date").notNull(),
+  metadata: text("metadata"), // JSON for additional data
+});
+
 // Insert schemas
 export const insertAdminSchema = createInsertSchema(admins).omit({
   id: true,
@@ -247,6 +392,68 @@ export const insertSystemMetricSchema = createInsertSchema(systemMetrics).omit({
   date: true,
 });
 
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true,
+  startTime: true,
+});
+
+export const insertApiMetricSchema = createInsertSchema(apiMetrics).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertFeatureUsageSchema = createInsertSchema(featureUsage).omit({
+  id: true,
+  firstUsed: true,
+  lastUsed: true,
+});
+
+export const insertRevenueEventSchema = createInsertSchema(revenueEvents).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback).omit({
+  id: true,
+  timestamp: true,
+});
+
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCompanySchema = createInsertSchema(companies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWorkspaceCompanySchema = createInsertSchema(workspaceCompanies).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWorkspaceMemberSchema = createInsertSchema(workspaceMembers).omit({
+  id: true,
+  invitedAt: true,
+});
+
+export const insertWorkspaceBackupSchema = createInsertSchema(workspaceBackups).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWorkspaceAccessControlSchema = createInsertSchema(workspaceAccessControl).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWorkspaceUsageMetricSchema = createInsertSchema(workspaceUsageMetrics).omit({
+  id: true,
+});
+
 // Login schema
 export const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -282,4 +489,28 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type SystemMetric = typeof systemMetrics.$inferSelect;
 export type InsertSystemMetric = z.infer<typeof insertSystemMetricSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type ApiMetric = typeof apiMetrics.$inferSelect;
+export type InsertApiMetric = z.infer<typeof insertApiMetricSchema>;
+export type FeatureUsage = typeof featureUsage.$inferSelect;
+export type InsertFeatureUsage = z.infer<typeof insertFeatureUsageSchema>;
+export type RevenueEvent = typeof revenueEvents.$inferSelect;
+export type InsertRevenueEvent = z.infer<typeof insertRevenueEventSchema>;
+export type CustomerFeedback = typeof customerFeedback.$inferSelect;
+export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type WorkspaceCompany = typeof workspaceCompanies.$inferSelect;
+export type InsertWorkspaceCompany = z.infer<typeof insertWorkspaceCompanySchema>;
+export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
+export type InsertWorkspaceMember = z.infer<typeof insertWorkspaceMemberSchema>;
+export type WorkspaceBackup = typeof workspaceBackups.$inferSelect;
+export type InsertWorkspaceBackup = z.infer<typeof insertWorkspaceBackupSchema>;
+export type WorkspaceAccessControl = typeof workspaceAccessControl.$inferSelect;
+export type InsertWorkspaceAccessControl = z.infer<typeof insertWorkspaceAccessControlSchema>;
+export type WorkspaceUsageMetric = typeof workspaceUsageMetrics.$inferSelect;
+export type InsertWorkspaceUsageMetric = z.infer<typeof insertWorkspaceUsageMetricSchema>;
 export type LoginData = z.infer<typeof loginSchema>;

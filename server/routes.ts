@@ -130,6 +130,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/dashboard/advanced-stats', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const stats = await storage.getAdvancedDashboardStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Advanced dashboard stats error:', error);
+      res.status(500).json({ message: "Failed to fetch advanced dashboard stats" });
+    }
+  });
+
   app.get('/api/dashboard/recent-users', requireAuth, async (req: Request, res: Response) => {
     try {
       const users = await storage.getRecentUsers(5);
@@ -288,6 +298,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Delete workspace error:', error);
       res.status(500).json({ message: "Failed to delete workspace" });
+    }
+  });
+
+  // Archive workspace
+  app.patch('/api/workspaces/:id/archive', requireAuth, logAudit('archive', 'workspace'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const workspace = await storage.archiveWorkspace(id);
+      res.json(workspace);
+    } catch (error) {
+      console.error('Archive workspace error:', error);
+      res.status(500).json({ message: "Failed to archive workspace" });
+    }
+  });
+
+  // Clone workspace
+  app.post('/api/workspaces/:id/clone', requireAuth, logAudit('clone', 'workspace'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, slug } = req.body;
+      const workspace = await storage.cloneWorkspace(id, name, slug);
+      res.json(workspace);
+    } catch (error) {
+      console.error('Clone workspace error:', error);
+      res.status(500).json({ message: "Failed to clone workspace" });
+    }
+  });
+
+  // Create workspace backup
+  app.post('/api/workspaces/:id/backup', requireAuth, logAudit('backup', 'workspace'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name } = req.body;
+      const backup = await storage.createWorkspaceBackup(id, req.session.adminId!, name);
+      res.json(backup);
+    } catch (error) {
+      console.error('Create backup error:', error);
+      res.status(500).json({ message: "Failed to create backup" });
+    }
+  });
+
+  // Get workspace backups
+  app.get('/api/workspaces/:id/backups', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const backups = await storage.getWorkspaceBackups(id);
+      res.json(backups);
+    } catch (error) {
+      console.error('Get backups error:', error);
+      res.status(500).json({ message: "Failed to fetch backups" });
+    }
+  });
+
+  // Update workspace companies
+  app.patch('/api/workspaces/:id/companies', requireAuth, logAudit('update', 'workspace_companies'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { companyIds } = req.body;
+      await storage.updateWorkspaceCompanies(id, companyIds);
+      res.json({ message: "Workspace companies updated successfully" });
+    } catch (error) {
+      console.error('Update workspace companies error:', error);
+      res.status(500).json({ message: "Failed to update workspace companies" });
+    }
+  });
+
+  // Get workspace companies
+  app.get('/api/workspaces/:id/companies', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const companies = await storage.getWorkspaceCompanies(id);
+      res.json(companies);
+    } catch (error) {
+      console.error('Get workspace companies error:', error);
+      res.status(500).json({ message: "Failed to fetch workspace companies" });
+    }
+  });
+
+  // Workspace members routes
+  app.get('/api/workspaces/:id/members', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const members = await storage.getWorkspaceMembers(id);
+      res.json(members);
+    } catch (error) {
+      console.error('Get workspace members error:', error);
+      res.status(500).json({ message: "Failed to fetch workspace members" });
+    }
+  });
+
+  app.post('/api/workspaces/:id/members', requireAuth, logAudit('add', 'workspace_member'), async (req: Request, res: Response) => {
+    try {
+      const workspaceId = parseInt(req.params.id);
+      const member = await storage.addWorkspaceMember({
+        ...req.body,
+        workspaceId,
+        invitedBy: req.session.adminId
+      });
+      res.json(member);
+    } catch (error) {
+      console.error('Add workspace member error:', error);
+      res.status(500).json({ message: "Failed to add workspace member" });
+    }
+  });
+
+  app.put('/api/workspace-members/:id', requireAuth, logAudit('update', 'workspace_member'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const member = await storage.updateWorkspaceMember(id, req.body);
+      res.json(member);
+    } catch (error) {
+      console.error('Update workspace member error:', error);
+      res.status(500).json({ message: "Failed to update workspace member" });
+    }
+  });
+
+  app.delete('/api/workspace-members/:id', requireAuth, logAudit('remove', 'workspace_member'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.removeWorkspaceMember(id);
+      res.json({ message: "Workspace member removed successfully" });
+    } catch (error) {
+      console.error('Remove workspace member error:', error);
+      res.status(500).json({ message: "Failed to remove workspace member" });
+    }
+  });
+
+  // Workspace access control routes
+  app.get('/api/workspaces/:id/access-control', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const accessControl = await storage.getWorkspaceAccessControl(id);
+      res.json(accessControl);
+    } catch (error) {
+      console.error('Get workspace access control error:', error);
+      res.status(500).json({ message: "Failed to fetch workspace access control" });
+    }
+  });
+
+  app.patch('/api/workspaces/:id/access-control', requireAuth, logAudit('update', 'workspace_access_control'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { accessRules } = req.body;
+      await storage.updateWorkspaceAccessControl(id, accessRules);
+      res.json({ message: "Workspace access control updated successfully" });
+    } catch (error) {
+      console.error('Update workspace access control error:', error);
+      res.status(500).json({ message: "Failed to update workspace access control" });
+    }
+  });
+
+  // Workspace usage metrics routes
+  app.get('/api/workspaces/:id/usage', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { metricType } = req.query;
+      const metrics = await storage.getWorkspaceUsageMetrics(id, metricType as string);
+      res.json(metrics);
+    } catch (error) {
+      console.error('Get workspace usage metrics error:', error);
+      res.status(500).json({ message: "Failed to fetch workspace usage metrics" });
     }
   });
 
@@ -697,6 +868,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Delete table field error:', error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Company routes
+  app.get('/api/companies', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { search, page = "1", limit = "10" } = req.query;
+      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+      
+      const result = await storage.getCompanies({
+        search: search as string,
+        limit: parseInt(limit as string),
+        offset,
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Get companies error:', error);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
+  });
+
+  app.get('/api/companies/:id', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const company = await storage.getCompanyById(id);
+      
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      res.json(company);
+    } catch (error) {
+      console.error('Get company error:', error);
+      res.status(500).json({ message: "Failed to fetch company" });
+    }
+  });
+
+  app.post('/api/companies', requireAuth, logAudit('create', 'company'), async (req: Request, res: Response) => {
+    try {
+      const company = await storage.createCompany(req.body);
+      res.json(company);
+    } catch (error) {
+      console.error('Create company error:', error);
+      res.status(400).json({ message: "Invalid company data" });
+    }
+  });
+
+  app.put('/api/companies/:id', requireAuth, logAudit('update', 'company'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const company = await storage.updateCompany(id, req.body);
+      res.json(company);
+    } catch (error) {
+      console.error('Update company error:', error);
+      res.status(400).json({ message: "Invalid company data" });
+    }
+  });
+
+  app.delete('/api/companies/:id', requireAuth, logAudit('delete', 'company'), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCompany(id);
+      res.json({ message: "Company deleted successfully" });
+    } catch (error) {
+      console.error('Delete company error:', error);
+      res.status(500).json({ message: "Failed to delete company" });
     }
   });
 

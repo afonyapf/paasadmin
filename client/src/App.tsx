@@ -7,6 +7,7 @@ import LoginPage from "./pages/login";
 import DashboardPage from "./pages/dashboard";
 import UsersPage from "./pages/users";
 import WorkspacesPage from "./pages/workspaces";
+import WorkspaceDetailPage from "./pages/workspace-detail";
 import TariffsPage from "./pages/tariffs";
 import TemplatesPage from "./pages/templates";
 import DomainsPage from "./pages/domains";
@@ -53,9 +54,14 @@ function Router() {
           <UsersPage />
         </ProtectedRoute>
       </Route>
-      <Route path="/workspaces">
+      <Route path="/workspaces" exact>
         <ProtectedRoute>
           <WorkspacesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/workspaces/:id">
+        <ProtectedRoute>
+          <WorkspaceDetailPage />
         </ProtectedRoute>
       </Route>
       <Route path="/tariffs">
